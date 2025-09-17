@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Homepage Login</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: #F5F5F5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            transition: background-color 0.5s ease-in-out;
+        }
+
+        .login-container {
+            background-color: #ffffff;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+            padding: 40px;
+            text-align: center;
+            width: 400px;
+            max-width: 90%;
+            animation: fadeIn 1s ease-in-out;
+        }
+
+        .tabs {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 25px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        .tab {
+            padding: 10px 0;
+            cursor: pointer;
+            flex-grow: 1;
+            font-weight: 600;
+            color: #888888;
+            transition: color 0.3s ease-in-out;
+            position: relative;
+        }
+
+        .tab.active {
+            color: #001F54;
+        }
+
+        .tab.active::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background-color: #FCA311;
+            animation: tabUnderline 0.3s ease-in-out forwards;
+        }
+
+        .form-content {
+            position: relative;
+            height: 250px;
+            overflow: hidden;
+        }
+
+        .form {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            opacity: 0;
+            transition: opacity 0.5s ease-in-out, transform 0.5s ease-in-out;
+            transform: translateX(100%);
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .form.active {
+            opacity: 1;
+            transform: translateX(0);
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: all 0.3s ease-in-out;
+        }
+
+        .input-group input:focus {
+            outline: none;
+            border-color: #FCA311;
+            box-shadow: 0 0 5px rgba(252, 163, 17, 0.5);
+        }
+
+        .login-button, .register-button {
+            width: 100%;
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: transform 0.2s ease-in-out, background-color 0.2s ease-in-out;
+        }
+
+        .login-button {
+            background-color: #001F54;
+            color: #ffffff;
+            border: none;
+        }
+
+        .login-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0, 31, 84, 0.2);
+        }
+
+        .register-button {
+            background-color: transparent;
+            color: #001F54;
+            border: 2px solid #001F54;
+        }
+
+        .register-button:hover {
+            background-color: #001F54;
+            color: #ffffff;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes tabUnderline {
+            from { transform: scaleX(0); }
+            to { transform: scaleX(1); }
+        }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <h1>Log In to Your Portal</h1>
+        <p>Your gateway to a world of learning and connection.</p>
+        
+        <div class="tabs">
+            <div class="tab active" data-form="student-form">Student</div>
+            <div class="tab" data-form="teacher-form">Teacher</div>
+            <div class="tab" data-form="parent-form">Parent</div>
+        </div>
+
+        <div class="form-content">
+            <form class="form active" id="student-form" method="POST" action="/login/">
+                {% csrf_token %}
+                <div class="input-group">
+                    <input type="text" name="student_id" placeholder="Student ID or Email" required>
+                </div>
+                <div class="input-group">
+                    <input type="password" name="password" placeholder="Password" required>
+                </div>
+                <a href="#" style="text-align: right; color: #888; font-size: 14px;">Forgot Password?</a>
+                <button type="submit" class="login-button">Student Login</button>
+            </form>
+
+            <form class="form" id="teacher-form" method="POST" action="/login/">
+                {% csrf_token %}
+                <div class="input-group">
+                    <input type="text" name="teacher_id" placeholder="Teacher ID or Email" required>
+                </div>
+                <div class="input-group">
+                    <input type="password" name="password" placeholder="Password" required>
+                </div>
+                <a href="#" style="text-align: right; color: #888; font-size: 14px;">Forgot Password?</a>
+                <button type="submit" class="login-button">Teacher Login</button>
+            </form>
+
+            <form class="form" id="parent-form" method="POST" action="/login/">
+                {% csrf_token %}
+                <div class="input-group">
+                    <input type="text" name="parent_id" placeholder="Parent ID or Email" required>
+                </div>
+                <div class="input-group">
+                    <input type="password" name="password" placeholder="Password" required>
+                </div>
+                <a href="#" style="text-align: right; color: #888; font-size: 14px;">Forgot Password?</a>
+                <button type="submit" class="login-button">Parent Login</button>
+            </form>
+        </div>
+
+        <div style="margin-top: 30px;">
+            <p>Don't have an account?</p>
+            <a href="{% url 'register' %}">
+                <button type="button" class="register-button">Register Now</button>
+            </a>
+        </div>
+    </div>
+
+    <script>
+        const tabs = document.querySelectorAll('.tab');
+        const forms = document.querySelectorAll('.form');
+
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                tabs.forEach(t => t.classList.remove('active'));
+                forms.forEach(f => f.classList.remove('active'));
+
+                tab.classList.add('active');
+                const formId = tab.getAttribute('data-form');
+                document.getElementById(formId).classList.add('active');
+            });
+        });
+    </script>
+</body>
+</html>
