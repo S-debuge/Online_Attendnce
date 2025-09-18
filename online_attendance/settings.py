@@ -157,9 +157,17 @@ DEBUG = os.environ.get('DEBUG', '1') == '1'
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '*').split(',')
 
 
-
 MIDDLEWARE = [
-    'whitenoise.middleware.WhiteNoiseMiddleware',
-    # ... other middleware
+    'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',        # optional, for static files
+    'django.contrib.sessions.middleware.SessionMiddleware',  # must be before AuthenticationMiddleware
+    'django.middleware.common.CommonMiddleware',
+    'django.middleware.csrf.CsrfViewMiddleware',
+    'django.contrib.auth.middleware.AuthenticationMiddleware',  # required for admin
+    'django.contrib.messages.middleware.MessageMiddleware',     # required for admin
+    'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+
+
+
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
