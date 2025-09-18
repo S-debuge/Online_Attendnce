@@ -26,7 +26,7 @@ SECRET_KEY = 'django-insecure-!n3=)b=uw21x2r&-ivl+r%aso1(^tj^d#2r95o7_44uxhu2von
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['*']
 
 
 # Application definition
@@ -123,8 +123,43 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+
+
+
 # school_portal/settings.py
 ...
 STATIC_URL = '/static/'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
+
+
+
+
+
+
+# Static files (CSS, JavaScript, Images)
+STATIC_URL = '/static/'
+
+# Add this line:
+import os
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+
+
+import os
+
+# Secret key
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'your-local-secret-key')
+
+# Debug
+DEBUG = os.environ.get('DEBUG', '1') == '1'
+
+# Allowed hosts
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '*').split(',')
+
+
+
+MIDDLEWARE = [
+    'whitenoise.middleware.WhiteNoiseMiddleware',
+    # ... other middleware
+]
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'

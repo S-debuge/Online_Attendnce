@@ -302,6 +302,10 @@ def user_login(request):
 
     return redirect('home')
 
+
+#studant dashboard acces 
+
+
 def student_dashboard(request):
     return render(request, "student_dashboard.html")
 

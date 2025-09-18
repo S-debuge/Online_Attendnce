@@ -1,30 +1,217 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="light">
+
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Student Dashboard</title>
-    <style>
-        body { font-family: Arial, sans-serif; background: #f0f2f5; padding: 20px; }
-        .dashboard { max-width: 600px; margin: auto; background: #fff; padding: 30px; border-radius: 10px; box-shadow: 0 5px 20px rgba(0,0,0,0.1); }
-        img { border-radius: 50%; width: 120px; height: 120px; object-fit: cover; }
-        h1 { color: #001F54; }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Student Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
-<body>
-    <div class="dashboard">
-        <h1>Welcome, {{ user.name }}!</h1>
-        {% if user.photo %}
-            <img src="{{ user.photo.url }}" alt="Profile Picture">
-        {% else %}
-            <p>No photo uploaded</p>
-        {% endif %}
-        <p>Email: {{ user.email }}</p>
-        <p>Roll Number: {{ user.roll_number }}</p>
-        <p>Course: {{ user.course }}</p>
-        <p>Branch: {{ user.branch }}</p>
-        <p>Year: {{ user.year }}</p>
-        <a href="{% url 'login' %}">Logout</a>
-    </div>
+
+<body class="bg-gray-100">
+
+  <div class="flex flex-col md:flex-row min-h-screen">
+
+    <!-- Sidebar -->
+    <aside id="sidebar"
+      class="fixed md:relative z-20 w-64 bg-white shadow-md h-screen overflow-y-auto transform -translate-x-full md:translate-x-0 transition-transform duration-300">
+      <div class="p-4 flex items-center justify-between border-b">
+        <h1 class="text-xl font-bold text-blue-600">Studance Attendance</h1>
+        <button class="md:hidden" onclick="toggleSidebar()">✖</button>
+      </div>
+      <nav class="p-4 space-y-3">
+        <button onclick="showPage('attendance')"
+          class="w-full text-left block text-gray-700 hover:text-blue-600">📅 Attendance</button>
+        <button onclick="showPage('timetable')"
+          class="w-full text-left block text-gray-700 hover:text-blue-600">📖 Time Table</button>
+        <button onclick="showPage('subjects')"
+          class="w-full text-left block text-gray-700 hover:text-blue-600">📝 Result</button>
+        <button onclick="showPage('emergency')"
+          class="w-full text-left block text-red-600 font-semibold">🆘 Emergency Alert</button>
+        <button onclick="showPage('leave')"
+          class="w-full text-left block text-gray-700 hover:text-blue-600">📌 Smart Leave</button>
+        <button onclick="showPage('notification')"
+          class="w-full text-left block text-yellow-600 hover:text-yellow-700 font-semibold">🔔 Notifications</button>
+      </nav>
+    </aside>
+
+    <!-- Mobile Hamburger -->
+    <button
+      class="fixed top-4 left-4 z-30 md:hidden bg-blue-600 text-white px-3 py-2 rounded shadow"
+      onclick="toggleSidebar()">☰</button>
+
+    <!-- Main Content -->
+    <main class="flex-1 p-4 md:ml-64 max-w-full">
+
+      <!-- Student Info -->
+      <div
+        class="bg-white p-4 rounded-xl shadow-md flex flex-col md:flex-row items-center gap-4 mb-6 w-full max-w-5xl mx-auto">
+        <img src="https://i.pravatar.cc/100" class="w-20 h-20 rounded-full border" alt="Profile">
+        <div class="text-center md:text-left">
+          <h2 class="text-xl font-bold">Larry Carlson</h2>
+          <p class="text-sm text-gray-500">📍 Richmond, New York, USA</p>
+          <div class="mt-1 text-sm text-gray-700">
+            <p><b>Email ID:</b> shree@gmail.com</p>
+            <p><b>Mobile No:</b> 1234</p>
+            <p><b>Gender:</b> Female</p>
+            <p><b>DOB:</b> 23/12/2016</p>
+            <p><b>ID No:</b> 1234</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Attendance Page -->
+      <section id="attendance"
+        class="page hidden bg-white p-4 rounded-xl shadow-md max-w-5xl mx-auto overflow-x-auto">
+        <h1 class="text-2xl font-bold mb-4">📅 Attendance</h1>
+        <div class="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
+          <input type="date" id="attendanceDate"
+            class="border p-2 rounded flex-1 min-w-[150px]" onchange="loadAttendanceForDate(this.value)">
+          <button
+            class="bg-blue-600 text-white px-3 py-2 rounded hover:bg-blue-700 whitespace-nowrap"
+            onclick="showAttendanceWeek()">Week %</button>
+          <button
+            class="bg-blue-600 text-white px-3 py-2 rounded hover:bg-blue-700 whitespace-nowrap"
+            onclick="showAttendanceMonth()">Month %</button>
+          <button
+            onclick="downloadAttendance()"
+            class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 whitespace-nowrap">⬇️ Download</button>
+        </div>
+        <canvas id="attendanceChart" class="mb-4"></canvas>
+        <div id="attendanceTableContainer" class="overflow-x-auto">
+          <h2 class="text-lg font-semibold mb-3" id="attendanceTitle">Daily Attendance</h2>
+          <table class="min-w-[600px] w-full border text-center">
+            <thead class="bg-gray-200">
+              <tr>
+                <th class="p-2">Date</th>
+                <th class="p-2">Subject</th>
+                <th class="p-2">Status</th>
+              </tr>
+            </thead>
+            <tbody id="attendanceTableBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Timetable Page -->
+      <div id="timetable"
+        class="page hidden bg-white p-4 rounded-xl shadow-md max-w-5xl mx-auto overflow-x-auto">
+        <h3 class="text-lg font-semibold mb-2">📖 Time Table</h3>
+        <div class="flex flex-wrap gap-3 mb-4">
+          <button onclick="showTimetable(1, this)"
+            class="year-btn bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">1st Year</button>
+          <button onclick="showTimetable(2, this)"
+            class="year-btn bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">2nd Year</button>
+          <button onclick="showTimetable(3, this)"
+            class="year-btn bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">3rd Year</button>
+          <button onclick="showTimetable(4, this)"
+            class="year-btn bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">4th Year</button>
+          <button onclick="downloadTimetable()"
+            class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">⬇️ Download</button>
+        </div>
+        <div class="overflow-x-auto">
+          <img id="timetableImage" src="timetable1.jpg" alt="Class Timetable"
+            class="w-full h-auto rounded shadow-md cursor-pointer transition-opacity duration-500 opacity-100">
+        </div>
+      </div>
+
+      <!-- Subjects & Marks Page -->
+      <div id="subjects"
+        class="page hidden bg-white p-4 rounded-xl shadow-md max-w-5xl mx-auto overflow-x-auto">
+        <h3 class="text-lg font-semibold mb-2">📝 Result</h3>
+        <div id="marksYearButtons" class="flex flex-wrap gap-3 mb-4">
+          <button onclick="selectYear(1, this)"
+            class="marks-year-btn bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">1st Year</button>
+          <button onclick="selectYear(2, this)"
+            class="marks-year-btn bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">2nd Year</button>
+          <button onclick="selectYear(3, this)"
+            class="marks-year-btn bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">3rd Year</button>
+          <button onclick="selectYear(4, this)"
+            class="marks-year-btn bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">4th Year</button>
+          <button onclick="downloadResult()"
+            class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">⬇️ Download</button>
+        </div>
+        <div id="marksSemesterButtons" class="flex flex-wrap gap-3 mb-4 hidden"></div>
+        <table id="marksTable" class="min-w-[600px] table-auto w-full text-sm text-center border min-w-max">
+          <thead class="bg-gray-100">
+            <tr>
+              <th class="border p-2">Subject</th>
+              <th class="border p-2">Max Marks</th>
+              <th class="border p-2">Obtained</th>
+              <th class="border p-2">Grade</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+        <img id="marksImage" class="w-full rounded shadow-md hidden" alt="No Data" />
+      </div>
+
+      <!-- Emergency Alert Page -->
+      <div id="emergency"
+        class="page hidden bg-white p-4 rounded-xl shadow-md max-w-5xl mx-auto overflow-x-auto">
+        <h3 class="text-lg font-semibold mb-2 text-red-600">🆘 Emergency Alert</h3>
+        <textarea class="w-full border rounded-lg p-2 mb-3" rows="3"
+          placeholder="Type your emergency message..."></textarea>
+        <button class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700">Send Alert 🚨</button>
+      </div>
+
+      <!-- Smart Leave Page -->
+      <div id="leave"
+        class="page hidden bg-white p-4 rounded-xl shadow-md max-w-5xl mx-auto overflow-x-auto">
+        <h3 class="text-lg font-semibold mb-2">📌 Smart Leave Management</h3>
+        <form id="leaveForm" class="space-y-3 mb-6">
+          <input type="text" id="studentName" placeholder="Student Name"
+            class="w-full border p-2 rounded-lg" required>
+          <input type="date" id="leaveDate" class="w-full border p-2 rounded-lg" required>
+          <textarea id="leaveReason" placeholder="Reason for Leave"
+            class="w-full border p-2 rounded-lg" rows="3" required></textarea>
+          <button type="submit"
+            class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">Submit Leave Request</button>
+        </form>
+        <table class="min-w-[600px] table-auto w-full text-sm text-center border min-w-max">
+          <thead class="bg-gray-100">
+            <tr>
+              <th class="border p-2">Name</th>
+              <th class="border p-2">Date</th>
+              <th class="border p-2">Reason</th>
+              <th class="border p-2">Status</th>
+            </tr>
+          </thead>
+          <tbody id="leaveTable"></tbody>
+        </table>
+      </div>
+
+      <!-- Notifications Page -->
+      <div id="notification"
+        class="page hidden bg-white p-4 rounded-xl shadow-md max-w-5xl mx-auto overflow-x-auto">
+        <h3 class="text-lg font-semibold mb-2 text-yellow-600">🔔 Notifications</h3>
+        <div id="notificationsList" class="space-y-3">
+          <div class="p-3 bg-yellow-100 rounded shadow">New assignment uploaded in Math.</div>
+          <div class="p-3 bg-yellow-100 rounded shadow">School closed on 25th September due to maintenance.</div>
+          <div class="p-3 bg-yellow-100 rounded shadow">Submit leave request before 5 PM today.</div>
+        </div>
+      </div>
+
+    </main>
+
+  </div>
+
+  <script>
+    function toggleSidebar() {
+      document.getElementById("sidebar").classList.toggle("-translate-x-full");
+    }
+    function showPage(id) {
+      document.querySelectorAll(".page").forEach(p => p.classList.add("hidden"));
+      document.getElementById(id).classList.remove("hidden");
+    }
+
+    // Show Attendance as default on page load
+    document.addEventListener('DOMContentLoaded', () => {
+      showPage('attendance');
+    });
+  </script>
+
 </body>
+
 </html>
