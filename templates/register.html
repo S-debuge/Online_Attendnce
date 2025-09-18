@@ -74,6 +74,12 @@
             border-radius: 8px;
         }
 
+        small.error-text {
+            font-size: 13px;
+            margin-top: -5px;
+            margin-bottom: 5px;
+        }
+
         button {
             background: #001F54;
             color: white;
@@ -121,14 +127,21 @@
         <form id="student-form" class="active" method="POST">
             {% csrf_token %}
             <input type="hidden" name="form_type" value="student">
+
             <input type="text" name="name" placeholder="Full Name" required>
-            <input type="email" name="email" placeholder="Email" required>
+            <input type="email" id="student_email" name="email" placeholder="Email" required>
+            <small id="student_email_error" class="error-text"></small>
+
             <input type="text" name="phone" placeholder="Phone" required>
             <input type="text" name="address" placeholder="Address" required>
-            <input type="text" name="roll_number" placeholder="Roll Number" required>
+
+            <input type="text" id="student_roll" name="roll_number" placeholder="Roll Number" required>
+            <small id="student_roll_error" class="error-text"></small>
+
             <input type="text" name="course" placeholder="Course" required>
             <input type="text" name="branch" placeholder="Branch" required>
             <input type="text" name="year" placeholder="Year" required>
+
             <input type="text" name="parent_fullname" placeholder="Parent Name" required>
             <select name="guardian_teacher" required>
                 <option value="">Select Guardian Teacher</option>
@@ -136,6 +149,7 @@
                     <option value="{{ teacher.name }}">{{ teacher.name }}</option>
                 {% endfor %}
             </select>
+
             <input type="password" name="password" placeholder="Password" required>
 
             <video id="video-student" autoplay></video>
@@ -152,13 +166,19 @@
         <form id="teacher-form" method="POST">
             {% csrf_token %}
             <input type="hidden" name="form_type" value="teacher">
+
             <input type="text" name="name" placeholder="Full Name" required>
-            <input type="email" name="email" placeholder="Email" required>
+            <input type="email" id="teacher_email" name="email" placeholder="Email" required>
+            <small id="teacher_email_error" class="error-text"></small>
+
             <input type="text" name="phone" placeholder="Phone" required>
             <input type="text" name="address" placeholder="Address" required>
             <input type="text" name="department" placeholder="Department" required>
             <input type="text" name="subject" placeholder="Subject" required>
-            <input type="text" name="employee_id" placeholder="Employee ID" required>
+
+            <input type="text" id="teacher_emp_id" name="employee_id" placeholder="Employee ID" required>
+            <small id="teacher_emp_error" class="error-text"></small>
+
             <input type="password" name="password" placeholder="Password" required>
 
             <video id="video-teacher" autoplay></video>
@@ -175,11 +195,17 @@
         <form id="parent-form" method="POST">
             {% csrf_token %}
             <input type="hidden" name="form_type" value="parent">
+
             <input type="text" name="name" placeholder="Full Name" required>
-            <input type="email" name="email" placeholder="Email" required>
+            <input type="email" id="parent_email" name="email" placeholder="Email" required>
+            <small id="parent_email_error" class="error-text"></small>
+
             <input type="text" name="phone" placeholder="Phone" required>
             <input type="text" name="address" placeholder="Address" required>
-            <input type="text" name="aadhaar" placeholder="Aadhaar Number" required>
+
+            <input type="text" id="parent_aadhaar" name="aadhaar" placeholder="Aadhaar Number" required>
+            <small id="parent_aadhaar_error" class="error-text"></small>
+
             <input type="text" name="relation" placeholder="Relation (Father/Mother)" required>
             <select name="student_id" required>
                 <option value="">Select Student</option>
@@ -187,6 +213,7 @@
                     <option value="{{ student.id }}">{{ student.name }}</option>
                 {% endfor %}
             </select>
+
             <input type="password" name="password" placeholder="Password" required>
 
             <video id="video-parent" autoplay></video>
@@ -201,6 +228,7 @@
     </div>
 
     <script>
+        // TAB SWITCHING
         const tabs = document.querySelectorAll('.tab');
         const forms = document.querySelectorAll('form');
 
@@ -208,12 +236,12 @@
             tab.addEventListener('click', () => {
                 tabs.forEach(t => t.classList.remove('active'));
                 forms.forEach(f => f.classList.remove('active'));
-
                 tab.classList.add('active');
                 document.getElementById(tab.dataset.form).classList.add('active');
             });
         });
 
+        // CAMERA + PHOTO CAPTURE
         async function startCamera(type) {
             const video = document.getElementById(`video-${type}`);
             let stream = await navigator.mediaDevices.getUserMedia({ video: true });
@@ -234,6 +262,52 @@
             preview.style.display = 'block';
             photoInput.value = imgData;
         }
+
+        // REAL-TIME UNIQUE CHECK
+        async function checkUnique(field, value, errorId) {
+            if (!value) return;
+            let res = await fetch(`/check-unique/?field=${field}&value=${value}`);
+            let data = await res.json();
+            const errorElement = document.getElementById(errorId);
+            if (data.exists) {
+                errorElement.innerText = "❌ Already taken";
+                errorElement.style.color = "red";
+            } else {
+                errorElement.innerText = "✔ Available";
+                errorElement.style.color = "green";
+            }
+        }
+
+        // Add event listeners
+        document.getElementById("student_email").addEventListener("blur", () => {
+            checkUnique("student_email", document.getElementById("student_email").value, "student_email_error");
+        });
+        document.getElementById("student_roll").addEventListener("blur", () => {
+            checkUnique("student_roll_number", document.getElementById("student_roll").value, "student_roll_error");
+        });
+        document.getElementById("teacher_email").addEventListener("blur", () => {
+            checkUnique("teacher_email", document.getElementById("teacher_email").value, "teacher_email_error");
+        });
+        document.getElementById("teacher_emp_id").addEventListener("blur", () => {
+            checkUnique("teacher_employee_id", document.getElementById("teacher_emp_id").value, "teacher_emp_error");
+        });
+        document.getElementById("parent_email").addEventListener("blur", () => {
+            checkUnique("parent_email", document.getElementById("parent_email").value, "parent_email_error");
+        });
+        document.getElementById("parent_aadhaar").addEventListener("blur", () => {
+            checkUnique("parent_aadhaar", document.getElementById("parent_aadhaar").value, "parent_aadhaar_error");
+        });
+
+        // Prevent submit without photo
+        forms.forEach(form => {
+            form.addEventListener("submit", function(event){
+                const photoInput = form.querySelector("input[name='photo_data']");
+                if (!photoInput.value) {
+                    alert("Please capture a photo before submitting!");
+                    event.preventDefault();
+                }
+            });
+        });
     </script>
 </body>
 </html>

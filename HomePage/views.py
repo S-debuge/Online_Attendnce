@@ -5,6 +5,13 @@ from .models import Teacher, Student, Parent
 def home(request):
     return render(request, "home.html")
 
+from django.contrib import messages
+from django.core.files.base import ContentFile
+from django.db import IntegrityError
+
+from .models import Student, Teacher, Parent
+
+
 def register(request):
     if request.method == 'POST':
         form_type = request.POST.get('form_type')
@@ -29,21 +36,26 @@ def register(request):
                     messages.error(request, "⚠️ Please fill all fields and capture a photo for Student Registration.")
                     return redirect('register')
 
-                student = Student(
-                    name=name, email=email, phone=phone, address=address,
-                    roll_number=roll_number, course=course, branch=branch,
-                    year=year, parent_fullname=parent_fullname,
-                    guardian_teacher=guardian_teacher, password=password
-                )
+                try:
+                    student = Student(
+                        name=name, email=email, phone=phone, address=address,
+                        roll_number=roll_number, course=course, branch=branch,
+                        year=year, parent_fullname=parent_fullname,
+                        guardian_teacher=guardian_teacher, password=password
+                    )
 
-                if photo_data.startswith("data:image"):
-                    format, imgstr = photo_data.split(';base64,')
-                    ext = format.split('/')[-1]
-                    student.photo.save(f"{roll_number}.{ext}", ContentFile(base64.b64decode(imgstr)), save=False)
+                    if photo_data.startswith("data:image"):
+                        format, imgstr = photo_data.split(';base64,')
+                        ext = format.split('/')[-1]
+                        student.photo.save(f"{roll_number}.{ext}", ContentFile(base64.b64decode(imgstr)), save=False)
 
-                student.save()
-                messages.success(request, "✅ Student Registered Successfully!")
-                return redirect('register_success')
+                    student.save()
+                    messages.success(request, "✅ Student Registered Successfully!")
+                    return redirect('register_success')
+
+                except IntegrityError as e:
+                    messages.error(request, "❌ Duplicate Entry: Make sure Email, Name, and Roll Number are unique.")
+                    return redirect('register')
 
             # ------------------ TEACHER FORM ------------------
             elif form_type == "teacher":
@@ -61,19 +73,25 @@ def register(request):
                     messages.error(request, "⚠️ Please fill all fields and capture a photo for Teacher Registration.")
                     return redirect('register')
 
-                teacher = Teacher(
-                    name=name, email=email, phone=phone, address=address,
-                    department=department, subject=subject, employee_id=employee_id, password=password
-                )
+                try:
+                    teacher = Teacher(
+                        name=name, email=email, phone=phone, address=address,
+                        department=department, subject=subject,
+                        employee_id=employee_id, password=password
+                    )
 
-                if photo_data.startswith("data:image"):
-                    format, imgstr = photo_data.split(';base64,')
-                    ext = format.split('/')[-1]
-                    teacher.photo.save(f"{employee_id}.{ext}", ContentFile(base64.b64decode(imgstr)), save=False)
+                    if photo_data.startswith("data:image"):
+                        format, imgstr = photo_data.split(';base64,')
+                        ext = format.split('/')[-1]
+                        teacher.photo.save(f"{employee_id}.{ext}", ContentFile(base64.b64decode(imgstr)), save=False)
 
-                teacher.save()
-                messages.success(request, "✅ Teacher Registered Successfully!")
-                return redirect('register_success')
+                    teacher.save()
+                    messages.success(request, "✅ Teacher Registered Successfully!")
+                    return redirect('register_success')
+
+                except IntegrityError:
+                    messages.error(request, "❌ Duplicate Entry: Make sure Email, Name, and Employee ID are unique.")
+                    return redirect('register')
 
             # ------------------ PARENT FORM ------------------
             elif form_type == "parent":
@@ -91,19 +109,25 @@ def register(request):
                     messages.error(request, "⚠️ Please fill all fields and capture a photo for Parent Registration.")
                     return redirect('register')
 
-                parent = Parent(
-                    name=name, email=email, phone=phone, address=address,
-                    aadhaar=aadhaar, relation=relation, student_id=student_id, password=password
-                )
+                try:
+                    parent = Parent(
+                        name=name, email=email, phone=phone, address=address,
+                        aadhaar=aadhaar, relation=relation,
+                        student_id=student_id, password=password
+                    )
 
-                if photo_data.startswith("data:image"):
-                    format, imgstr = photo_data.split(';base64,')
-                    ext = format.split('/')[-1]
-                    parent.photo.save(f"{aadhaar}.{ext}", ContentFile(base64.b64decode(imgstr)), save=False)
+                    if photo_data.startswith("data:image"):
+                        format, imgstr = photo_data.split(';base64,')
+                        ext = format.split('/')[-1]
+                        parent.photo.save(f"{aadhaar}.{ext}", ContentFile(base64.b64decode(imgstr)), save=False)
 
-                parent.save()
-                messages.success(request, "✅ Parent Registered Successfully!")
-                return redirect('register_success')
+                    parent.save()
+                    messages.success(request, "✅ Parent Registered Successfully!")
+                    return redirect('register_success')
+
+                except IntegrityError:
+                    messages.error(request, "❌ Duplicate Entry: Make sure Email and Aadhaar are unique.")
+                    return redirect('register')
 
         except Exception as e:
             messages.error(request, f"❌ Error: {e}")
@@ -112,27 +136,26 @@ def register(request):
     teachers = Teacher.objects.all()
     students = Student.objects.all()
     return render(request, 'register.html', {'teachers': teachers, 'students': students})
-    
 # views.py
 from django.http import JsonResponse
-from .models import Teacher, Student, Parent
+from .models import Student, Teacher, Parent
 
 def check_unique(request):
-    field_type = request.GET.get("type")
+    field = request.GET.get("field")
     value = request.GET.get("value")
     exists = False
 
-    if field_type == "teacher_email":
-        exists = Teacher.objects.filter(email=value).exists()
-    elif field_type == "employee_id":
-        exists = Teacher.objects.filter(employee_id=value).exists()
-    elif field_type == "student_email":
+    if field == "student_email":
         exists = Student.objects.filter(email=value).exists()
-    elif field_type == "roll_number":
+    elif field == "student_roll_number":
         exists = Student.objects.filter(roll_number=value).exists()
-    elif field_type == "parent_email":
+    elif field == "teacher_email":
+        exists = Teacher.objects.filter(email=value).exists()
+    elif field == "teacher_employee_id":
+        exists = Teacher.objects.filter(employee_id=value).exists()
+    elif field == "parent_email":
         exists = Parent.objects.filter(email=value).exists()
-    elif field_type == "aadhaar":
+    elif field == "parent_aadhaar":
         exists = Parent.objects.filter(aadhaar=value).exists()
 
     return JsonResponse({"exists": exists})
