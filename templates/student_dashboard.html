@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Dashboard</title>
+    <style>
+        body { font-family: Arial, sans-serif; background: #f0f2f5; padding: 20px; }
+        .dashboard { max-width: 600px; margin: auto; background: #fff; padding: 30px; border-radius: 10px; box-shadow: 0 5px 20px rgba(0,0,0,0.1); }
+        img { border-radius: 50%; width: 120px; height: 120px; object-fit: cover; }
+        h1 { color: #001F54; }
+    </style>
+</head>
+<body>
+    <div class="dashboard">
+        <h1>Welcome, {{ user.name }}!</h1>
+        {% if user.photo %}
+            <img src="{{ user.photo.url }}" alt="Profile Picture">
+        {% else %}
+            <p>No photo uploaded</p>
+        {% endif %}
+        <p>Email: {{ user.email }}</p>
+        <p>Roll Number: {{ user.roll_number }}</p>
+        <p>Course: {{ user.course }}</p>
+        <p>Branch: {{ user.branch }}</p>
+        <p>Year: {{ user.year }}</p>
+        <a href="{% url 'login' %}">Logout</a>
+    </div>
+</body>
+</html>

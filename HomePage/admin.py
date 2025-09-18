@@ -1,33 +1,29 @@
 from django.contrib import admin
-from django.utils.html import format_html
 from .models import Teacher, Student, Parent
 
-# ✅ Show image preview in admin
-class PhotoPreviewMixin:
-    def photo_preview(self, obj):
-        if obj.photo:
-            return format_html('<img src="{}" width="80" style="border-radius:8px;">', obj.photo.url)
-        return "No Image"
-    photo_preview.short_description = "Photo"
 
-# ✅ Teacher Admin
 @admin.register(Teacher)
-class TeacherAdmin(admin.ModelAdmin, PhotoPreviewMixin):
-    list_display = ("name", "email", "phone", "department", "photo_preview")
-    search_fields = ("name", "email", "phone", "department")
-    fields = ("name", "email", "phone", "address", "department", "subject", "employee_id", "password", "photo")
+class TeacherAdmin(admin.ModelAdmin):
+    list_display = ("name", "email", "phone", "department", "subject", "employee_id", "image_tag")
+    search_fields = ("name", "email", "employee_id")
+    list_filter = ("department", "subject")
+    readonly_fields = ("image_tag",)
 
-# ✅ Student Admin
+
 @admin.register(Student)
-class StudentAdmin(admin.ModelAdmin, PhotoPreviewMixin):
-    list_display = ("name", "email", "phone", "roll_number", "branch", "photo_preview")
-    search_fields = ("name", "email", "phone", "roll_number")
-    fields = ("name", "email", "phone", "address", "course", "roll_number", "branch", "year",
-              "parent_fullname", "guardian_teacher", "password", "photo")
+class StudentAdmin(admin.ModelAdmin):
+    list_display = ("name", "email", "phone", "course", "roll_number", "branch", "year", "image_tag")
+    search_fields = ("name", "email", "roll_number")
+    list_filter = ("branch", "year")
+    readonly_fields = ("image_tag",)
 
-# ✅ Parent Admin
+
 @admin.register(Parent)
-class ParentAdmin(admin.ModelAdmin, PhotoPreviewMixin):
-    list_display = ("name", "email", "phone", "relation", "photo_preview")
-    search_fields = ("name", "email", "phone", "relation")
-    fields = ("name", "email", "phone", "address", "aadhaar", "relation", "student_id", "password", "photo")
+class ParentAdmin(admin.ModelAdmin):
+    list_display = ("name", "email", "phone", "relation", "student", "aadhaar", "image_tag")
+    search_fields = ("name", "email", "aadhaar")
+    list_filter = ("relation",)
+    readonly_fields = ("image_tag",)
+
+    # ✅ Use student dropdown properly
+    fields = ("name", "email", "phone", "address", "aadhaar", "relation", "student", "password", "photo", "image_tag")

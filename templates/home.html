@@ -139,13 +139,19 @@
             from { transform: scaleX(0); }
             to { transform: scaleX(1); }
         }
+
+        .error-message {
+            color: red;
+            font-size: 14px;
+            margin-bottom: 10px;
+        }
     </style>
 </head>
 <body>
     <div class="login-container">
         <h1>Log In to Your Portal</h1>
         <p>Your gateway to a world of learning and connection.</p>
-        
+
         <div class="tabs">
             <div class="tab active" data-form="student-form">Student</div>
             <div class="tab" data-form="teacher-form">Teacher</div>
@@ -153,8 +159,14 @@
         </div>
 
         <div class="form-content">
-            <form class="form active" id="student-form" method="POST" action="/login/">
+            <!-- Student Login -->
+            <form class="form active" id="student-form" method="POST" action="{% url 'login' %}">
                 {% csrf_token %}
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="error-message">{{ message }}</div>
+                    {% endfor %}
+                {% endif %}
                 <div class="input-group">
                     <input type="text" name="student_id" placeholder="Student ID or Email" required>
                 </div>
@@ -165,8 +177,14 @@
                 <button type="submit" class="login-button">Student Login</button>
             </form>
 
-            <form class="form" id="teacher-form" method="POST" action="/login/">
+            <!-- Teacher Login -->
+            <form class="form" id="teacher-form" method="POST" action="{% url 'login' %}">
                 {% csrf_token %}
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="error-message">{{ message }}</div>
+                    {% endfor %}
+                {% endif %}
                 <div class="input-group">
                     <input type="text" name="teacher_id" placeholder="Teacher ID or Email" required>
                 </div>
@@ -177,8 +195,14 @@
                 <button type="submit" class="login-button">Teacher Login</button>
             </form>
 
-            <form class="form" id="parent-form" method="POST" action="/login/">
+            <!-- Parent Login -->
+            <form class="form" id="parent-form" method="POST" action="{% url 'login' %}">
                 {% csrf_token %}
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="error-message">{{ message }}</div>
+                    {% endfor %}
+                {% endif %}
                 <div class="input-group">
                     <input type="text" name="parent_id" placeholder="Parent ID or Email" required>
                 </div>

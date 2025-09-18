@@ -6,165 +6,233 @@
     <title>Register</title>
     <style>
         body {
-            font-family: Arial, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: #F5F5F5;
             display: flex;
             justify-content: center;
             align-items: center;
-            background: linear-gradient(135deg, #6a11cb, #2575fc);
-            height: 100vh;
+            min-height: 100vh;
             margin: 0;
         }
-        .container {
+
+        .register-container {
             background: white;
-            padding: 25px;
             border-radius: 15px;
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
-            width: 100%;
-            max-width: 500px;
-            overflow-y: auto;
-            max-height: 95vh;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            padding: 30px;
+            width: 500px;
+            max-width: 95%;
+            animation: fadeIn 0.8s ease-in-out;
         }
-        h2 {
-            text-align: center;
+
+        .tabs {
+            display: flex;
+            justify-content: space-between;
             margin-bottom: 20px;
-            color: #333;
+            border-bottom: 2px solid #ddd;
         }
-        input, select, button {
-            width: 100%;
+
+        .tab {
+            flex: 1;
             padding: 10px;
-            margin: 8px 0;
-            border-radius: 8px;
-            border: 1px solid #ddd;
-        }
-        button {
-            background: #2575fc;
-            color: white;
             cursor: pointer;
             font-weight: bold;
-            border: none;
-        }
-        button:hover {
-            background: #1a5fd1;
-        }
-        .camera-container {
+            color: #888;
             text-align: center;
-            margin-top: 15px;
+            position: relative;
+            transition: color 0.3s ease-in-out;
         }
-        video, canvas {
-            max-width: 100%;
-            border-radius: 10px;
+
+        .tab.active {
+            color: #001F54;
         }
-        #captured-image {
+
+        .tab.active::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background-color: #FCA311;
+        }
+
+        form {
             display: none;
-            margin-top: 10px;
+            flex-direction: column;
+            gap: 10px;
         }
-        .hidden { display: none; }
+
+        form.active {
+            display: flex;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+        }
+
+        button {
+            background: #001F54;
+            color: white;
+            border: none;
+            padding: 12px;
+            width: 100%;
+            border-radius: 8px;
+            font-weight: bold;
+            margin-top: 10px;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+        }
+
+        video, canvas, img {
+            max-width: 100%;
+            margin-top: 10px;
+            border-radius: 8px;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h2>Register</h2>
-        <form method="POST">
+    <div class="register-container">
+        <h1>Register</h1>
+
+        <div class="tabs">
+            <div class="tab active" data-form="student-form">Student</div>
+            <div class="tab" data-form="teacher-form">Teacher</div>
+            <div class="tab" data-form="parent-form">Parent</div>
+        </div>
+
+        {% for message in messages %}
+            <p style="color:red;">{{ message }}</p>
+        {% endfor %}
+
+        <!-- STUDENT FORM -->
+        <form id="student-form" class="active" method="POST">
             {% csrf_token %}
-
-            <!-- Select User Type -->
-            <select name="user_type" id="user_type" onchange="toggleFields()" required>
-                <option value="">Select User Type</option>
-                <option value="teacher">Teacher</option>
-                <option value="student">Student</option>
-                <option value="parent">Parent</option>
-            </select>
-
-            <!-- Common Fields -->
+            <input type="hidden" name="form_type" value="student">
             <input type="text" name="name" placeholder="Full Name" required>
             <input type="email" name="email" placeholder="Email" required>
             <input type="text" name="phone" placeholder="Phone" required>
             <input type="text" name="address" placeholder="Address" required>
+            <input type="text" name="roll_number" placeholder="Roll Number" required>
+            <input type="text" name="course" placeholder="Course" required>
+            <input type="text" name="branch" placeholder="Branch" required>
+            <input type="text" name="year" placeholder="Year" required>
+            <input type="text" name="parent_fullname" placeholder="Parent Name" required>
+            <select name="guardian_teacher" required>
+                <option value="">Select Guardian Teacher</option>
+                {% for teacher in teachers %}
+                    <option value="{{ teacher.name }}">{{ teacher.name }}</option>
+                {% endfor %}
+            </select>
             <input type="password" name="password" placeholder="Password" required>
 
-            <!-- Teacher Fields -->
-            <div id="teacher_fields" class="hidden">
-                <input type="text" name="department" placeholder="Department">
-                <input type="text" name="subject" placeholder="Subject">
-                <input type="text" name="employee_id" placeholder="Employee ID">
-            </div>
+            <video id="video-student" autoplay></video>
+            <canvas id="canvas-student" style="display:none;"></canvas>
+            <img id="preview-student" style="display:none;">
+            <input type="hidden" name="photo_data" id="photo-student">
 
-            <!-- Student Fields -->
-            <div id="student_fields" class="hidden">
-                <input type="text" name="course" placeholder="Course">
-                <input type="text" name="roll_number" placeholder="Roll Number">
-                <input type="text" name="branch" placeholder="Branch">
-                <input type="text" name="year" placeholder="Year">
-                <input type="text" name="parent_fullname" placeholder="Parent Full Name">
-                <select name="guardian_teacher">
-                    <option value="">Select Guardian Teacher</option>
-                    {% for t in teachers %}
-                        <option value="{{ t.name }}">{{ t.name }}</option>
-                    {% endfor %}
-                </select>
-            </div>
+            <button type="button" onclick="startCamera('student')">Start Camera</button>
+            <button type="button" onclick="capturePhoto('student')">Capture Photo</button>
+            <button type="submit">Register Student</button>
+        </form>
 
-            <!-- Parent Fields -->
-            <div id="parent_fields" class="hidden">
-                <input type="text" name="aadhaar" placeholder="Aadhaar Number">
-                <input type="text" name="relation" placeholder="Relation with Student">
-                <select name="student_id">
-                    <option value="">Select Student</option>
-                    {% for s in students %}
-                        <option value="{{ s.id }}">{{ s.name }}</option>
-                    {% endfor %}
-                </select>
-            </div>
+        <!-- TEACHER FORM -->
+        <form id="teacher-form" method="POST">
+            {% csrf_token %}
+            <input type="hidden" name="form_type" value="teacher">
+            <input type="text" name="name" placeholder="Full Name" required>
+            <input type="email" name="email" placeholder="Email" required>
+            <input type="text" name="phone" placeholder="Phone" required>
+            <input type="text" name="address" placeholder="Address" required>
+            <input type="text" name="department" placeholder="Department" required>
+            <input type="text" name="subject" placeholder="Subject" required>
+            <input type="text" name="employee_id" placeholder="Employee ID" required>
+            <input type="password" name="password" placeholder="Password" required>
 
-            <!-- Camera Section -->
-            <div class="camera-container">
-                <video id="camera" autoplay></video>
-                <canvas id="snapshot" style="display:none;"></canvas>
-                <img id="captured-image" alt="Captured Image Preview">
-                <button type="button" onclick="startCamera()">📷 Start Camera</button>
-                <button type="button" onclick="capturePhoto()">✅ Capture Photo</button>
-                <input type="hidden" name="captured_image" id="captured_image_input">
-            </div>
+            <video id="video-teacher" autoplay></video>
+            <canvas id="canvas-teacher" style="display:none;"></canvas>
+            <img id="preview-teacher" style="display:none;">
+            <input type="hidden" name="photo_data" id="photo-teacher">
 
-            <button type="submit">Register</button>
+            <button type="button" onclick="startCamera('teacher')">Start Camera</button>
+            <button type="button" onclick="capturePhoto('teacher')">Capture Photo</button>
+            <button type="submit">Register Teacher</button>
+        </form>
+
+        <!-- PARENT FORM -->
+        <form id="parent-form" method="POST">
+            {% csrf_token %}
+            <input type="hidden" name="form_type" value="parent">
+            <input type="text" name="name" placeholder="Full Name" required>
+            <input type="email" name="email" placeholder="Email" required>
+            <input type="text" name="phone" placeholder="Phone" required>
+            <input type="text" name="address" placeholder="Address" required>
+            <input type="text" name="aadhaar" placeholder="Aadhaar Number" required>
+            <input type="text" name="relation" placeholder="Relation (Father/Mother)" required>
+            <select name="student_id" required>
+                <option value="">Select Student</option>
+                {% for student in students %}
+                    <option value="{{ student.id }}">{{ student.name }}</option>
+                {% endfor %}
+            </select>
+            <input type="password" name="password" placeholder="Password" required>
+
+            <video id="video-parent" autoplay></video>
+            <canvas id="canvas-parent" style="display:none;"></canvas>
+            <img id="preview-parent" style="display:none;">
+            <input type="hidden" name="photo_data" id="photo-parent">
+
+            <button type="button" onclick="startCamera('parent')">Start Camera</button>
+            <button type="button" onclick="capturePhoto('parent')">Capture Photo</button>
+            <button type="submit">Register Parent</button>
         </form>
     </div>
 
     <script>
-        function toggleFields() {
-            const type = document.getElementById('user_type').value;
-            document.getElementById('teacher_fields').classList.toggle('hidden', type !== 'teacher');
-            document.getElementById('student_fields').classList.toggle('hidden', type !== 'student');
-            document.getElementById('parent_fields').classList.toggle('hidden', type !== 'parent');
+        const tabs = document.querySelectorAll('.tab');
+        const forms = document.querySelectorAll('form');
+
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                tabs.forEach(t => t.classList.remove('active'));
+                forms.forEach(f => f.classList.remove('active'));
+
+                tab.classList.add('active');
+                document.getElementById(tab.dataset.form).classList.add('active');
+            });
+        });
+
+        async function startCamera(type) {
+            const video = document.getElementById(`video-${type}`);
+            let stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            video.srcObject = stream;
         }
 
-        let cameraStream;
-        async function startCamera() {
-            try {
-                cameraStream = await navigator.mediaDevices.getUserMedia({ video: true });
-                document.getElementById('camera').srcObject = cameraStream;
-            } catch (err) {
-                alert("Camera access denied or not available.");
-            }
-        }
-
-        function capturePhoto() {
-            const video = document.getElementById('camera');
-            const canvas = document.getElementById('snapshot');
-            const img = document.getElementById('captured-image');
-            const hiddenInput = document.getElementById('captured_image_input');
+        function capturePhoto(type) {
+            const video = document.getElementById(`video-${type}`);
+            const canvas = document.getElementById(`canvas-${type}`);
+            const preview = document.getElementById(`preview-${type}`);
+            const photoInput = document.getElementById(`photo-${type}`);
 
             canvas.width = video.videoWidth;
             canvas.height = video.videoHeight;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(video, 0, 0);
-
-            const dataURL = canvas.toDataURL("image/png");
-            img.src = dataURL;
-            img.style.display = "block";
-
-            hiddenInput.value = dataURL;
-            if (cameraStream) cameraStream.getTracks().forEach(track => track.stop());
+            canvas.getContext('2d').drawImage(video, 0, 0);
+            let imgData = canvas.toDataURL('image/png');
+            preview.src = imgData;
+            preview.style.display = 'block';
+            photoInput.value = imgData;
         }
     </script>
 </body>
