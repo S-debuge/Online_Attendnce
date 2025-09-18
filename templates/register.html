@@ -5,26 +5,47 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Register</title>
     <style>
+        /* BASIC PAGE STYLING */
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            background-color: #F5F5F5;
+            background: linear-gradient(135deg, #001F54, #FCA311);
             display: flex;
             justify-content: center;
             align-items: center;
             min-height: 100vh;
             margin: 0;
+            animation: fadeBg 5s ease-in-out infinite alternate;
         }
 
+        @keyframes fadeBg {
+            0% { background: linear-gradient(135deg, #001F54, #FCA311); }
+            100% { background: linear-gradient(135deg, #14213d, #ffb703); }
+        }
+
+        /* MAIN CARD */
         .register-container {
             background: white;
-            border-radius: 15px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            border-radius: 20px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
             padding: 30px;
             width: 500px;
             max-width: 95%;
-            animation: fadeIn 0.8s ease-in-out;
+            animation: slideUp 0.9s ease-out;
         }
 
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(40px) scale(0.9); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        h1 {
+            text-align: center;
+            margin-bottom: 15px;
+            color: #001F54;
+            font-size: 1.8rem;
+        }
+
+        /* TABS */
         .tabs {
             display: flex;
             justify-content: space-between;
@@ -40,7 +61,12 @@
             color: #888;
             text-align: center;
             position: relative;
-            transition: color 0.3s ease-in-out;
+            transition: color 0.3s ease-in-out, transform 0.3s ease-in-out;
+        }
+
+        .tab:hover {
+            color: #001F54;
+            transform: scale(1.05);
         }
 
         .tab.active {
@@ -53,14 +79,23 @@
             bottom: -2px;
             left: 0;
             width: 100%;
-            height: 2px;
+            height: 3px;
             background-color: #FCA311;
+            border-radius: 10px;
+            animation: underline 0.3s ease forwards;
         }
 
+        @keyframes underline {
+            from { width: 0; }
+            to { width: 100%; }
+        }
+
+        /* FORMS */
         form {
             display: none;
             flex-direction: column;
-            gap: 10px;
+            gap: 12px;
+            animation: fadeIn 0.6s ease-in-out;
         }
 
         form.active {
@@ -71,15 +106,26 @@
             width: 100%;
             padding: 12px;
             border: 1px solid #ddd;
-            border-radius: 8px;
+            border-radius: 10px;
+            transition: all 0.2s ease;
+            font-size: 14px;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: #FCA311;
+            box-shadow: 0 0 6px rgba(252,163,17,0.4);
         }
 
         small.error-text {
             font-size: 13px;
             margin-top: -5px;
             margin-bottom: 5px;
+            display: block;
+            min-height: 16px;
         }
 
+        /* BUTTONS */
         button {
             background: #001F54;
             color: white;
@@ -90,11 +136,12 @@
             font-weight: bold;
             margin-top: 10px;
             cursor: pointer;
-            transition: transform 0.2s ease;
+            transition: transform 0.2s ease, background 0.3s ease;
         }
 
         button:hover {
-            transform: translateY(-2px);
+            transform: translateY(-3px);
+            background: #14213D;
         }
 
         video, canvas, img {
@@ -104,44 +151,39 @@
         }
 
         @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(-20px); }
+            from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
         }
     </style>
 </head>
 <body>
     <div class="register-container">
-        <h1>Register</h1>
+        <h1>✨ Register Now</h1>
 
         <div class="tabs">
-            <div class="tab active" data-form="student-form">Student</div>
-            <div class="tab" data-form="teacher-form">Teacher</div>
-            <div class="tab" data-form="parent-form">Parent</div>
+            <div class="tab active" data-form="student-form">👨‍🎓 Student</div>
+            <div class="tab" data-form="teacher-form">👨‍🏫 Teacher</div>
+            <div class="tab" data-form="parent-form">👨‍👩‍👦 Parent</div>
         </div>
 
         {% for message in messages %}
-            <p style="color:red;">{{ message }}</p>
+            <p style="color:red; text-align:center;">{{ message }}</p>
         {% endfor %}
 
         <!-- STUDENT FORM -->
         <form id="student-form" class="active" method="POST">
             {% csrf_token %}
             <input type="hidden" name="form_type" value="student">
-
             <input type="text" name="name" placeholder="Full Name" required>
             <input type="email" id="student_email" name="email" placeholder="Email" required>
             <small id="student_email_error" class="error-text"></small>
-
             <input type="text" name="phone" placeholder="Phone" required>
             <input type="text" name="address" placeholder="Address" required>
-
             <input type="text" id="student_roll" name="roll_number" placeholder="Roll Number" required>
             <small id="student_roll_error" class="error-text"></small>
-
             <input type="text" name="course" placeholder="Course" required>
             <input type="text" name="branch" placeholder="Branch" required>
             <input type="text" name="year" placeholder="Year" required>
-
             <input type="text" name="parent_fullname" placeholder="Parent Name" required>
             <select name="guardian_teacher" required>
                 <option value="">Select Guardian Teacher</option>
@@ -149,63 +191,50 @@
                     <option value="{{ teacher.name }}">{{ teacher.name }}</option>
                 {% endfor %}
             </select>
-
             <input type="password" name="password" placeholder="Password" required>
-
             <video id="video-student" autoplay></video>
             <canvas id="canvas-student" style="display:none;"></canvas>
             <img id="preview-student" style="display:none;">
             <input type="hidden" name="photo_data" id="photo-student">
-
-            <button type="button" onclick="startCamera('student')">Start Camera</button>
-            <button type="button" onclick="capturePhoto('student')">Capture Photo</button>
-            <button type="submit">Register Student</button>
+            <button type="button" onclick="startCamera('student')">📷 Start Camera</button>
+            <button type="button" onclick="capturePhoto('student')">📸 Capture Photo</button>
+            <button type="submit">✅ Register Student</button>
         </form>
 
         <!-- TEACHER FORM -->
         <form id="teacher-form" method="POST">
             {% csrf_token %}
             <input type="hidden" name="form_type" value="teacher">
-
             <input type="text" name="name" placeholder="Full Name" required>
             <input type="email" id="teacher_email" name="email" placeholder="Email" required>
             <small id="teacher_email_error" class="error-text"></small>
-
             <input type="text" name="phone" placeholder="Phone" required>
             <input type="text" name="address" placeholder="Address" required>
             <input type="text" name="department" placeholder="Department" required>
             <input type="text" name="subject" placeholder="Subject" required>
-
             <input type="text" id="teacher_emp_id" name="employee_id" placeholder="Employee ID" required>
             <small id="teacher_emp_error" class="error-text"></small>
-
             <input type="password" name="password" placeholder="Password" required>
-
             <video id="video-teacher" autoplay></video>
             <canvas id="canvas-teacher" style="display:none;"></canvas>
             <img id="preview-teacher" style="display:none;">
             <input type="hidden" name="photo_data" id="photo-teacher">
-
-            <button type="button" onclick="startCamera('teacher')">Start Camera</button>
-            <button type="button" onclick="capturePhoto('teacher')">Capture Photo</button>
-            <button type="submit">Register Teacher</button>
+            <button type="button" onclick="startCamera('teacher')">📷 Start Camera</button>
+            <button type="button" onclick="capturePhoto('teacher')">📸 Capture Photo</button>
+            <button type="submit">✅ Register Teacher</button>
         </form>
 
         <!-- PARENT FORM -->
         <form id="parent-form" method="POST">
             {% csrf_token %}
             <input type="hidden" name="form_type" value="parent">
-
             <input type="text" name="name" placeholder="Full Name" required>
             <input type="email" id="parent_email" name="email" placeholder="Email" required>
             <small id="parent_email_error" class="error-text"></small>
-
             <input type="text" name="phone" placeholder="Phone" required>
             <input type="text" name="address" placeholder="Address" required>
-
             <input type="text" id="parent_aadhaar" name="aadhaar" placeholder="Aadhaar Number" required>
             <small id="parent_aadhaar_error" class="error-text"></small>
-
             <input type="text" name="relation" placeholder="Relation (Father/Mother)" required>
             <select name="student_id" required>
                 <option value="">Select Student</option>
@@ -213,22 +242,19 @@
                     <option value="{{ student.id }}">{{ student.name }}</option>
                 {% endfor %}
             </select>
-
             <input type="password" name="password" placeholder="Password" required>
-
             <video id="video-parent" autoplay></video>
             <canvas id="canvas-parent" style="display:none;"></canvas>
             <img id="preview-parent" style="display:none;">
             <input type="hidden" name="photo_data" id="photo-parent">
-
-            <button type="button" onclick="startCamera('parent')">Start Camera</button>
-            <button type="button" onclick="capturePhoto('parent')">Capture Photo</button>
-            <button type="submit">Register Parent</button>
+            <button type="button" onclick="startCamera('parent')">📷 Start Camera</button>
+            <button type="button" onclick="capturePhoto('parent')">📸 Capture Photo</button>
+            <button type="submit">✅ Register Parent</button>
         </form>
     </div>
 
     <script>
-        // TAB SWITCHING
+        // SAME JS (NO CHANGE)
         const tabs = document.querySelectorAll('.tab');
         const forms = document.querySelectorAll('form');
 
@@ -241,7 +267,6 @@
             });
         });
 
-        // CAMERA + PHOTO CAPTURE
         async function startCamera(type) {
             const video = document.getElementById(`video-${type}`);
             let stream = await navigator.mediaDevices.getUserMedia({ video: true });
@@ -253,7 +278,6 @@
             const canvas = document.getElementById(`canvas-${type}`);
             const preview = document.getElementById(`preview-${type}`);
             const photoInput = document.getElementById(`photo-${type}`);
-
             canvas.width = video.videoWidth;
             canvas.height = video.videoHeight;
             canvas.getContext('2d').drawImage(video, 0, 0);
@@ -263,7 +287,6 @@
             photoInput.value = imgData;
         }
 
-        // REAL-TIME UNIQUE CHECK
         async function checkUnique(field, value, errorId) {
             if (!value) return;
             let res = await fetch(`/check-unique/?field=${field}&value=${value}`);
@@ -278,7 +301,6 @@
             }
         }
 
-        // Add event listeners
         document.getElementById("student_email").addEventListener("blur", () => {
             checkUnique("student_email", document.getElementById("student_email").value, "student_email_error");
         });
@@ -298,7 +320,6 @@
             checkUnique("parent_aadhaar", document.getElementById("parent_aadhaar").value, "parent_aadhaar_error");
         });
 
-        // Prevent submit without photo
         forms.forEach(form => {
             form.addEventListener("submit", function(event){
                 const photoInput = form.querySelector("input[name='photo_data']");
