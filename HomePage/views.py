@@ -1,15 +1,21 @@
 import base64
 from django.shortcuts import render, redirect
 from django.core.files.base import ContentFile
-from .models import Teacher, Student, Parent
+from django.contrib import messages
+from django.db import IntegrityError
+from django.http import JsonResponse
+
+from .models import (
+    Student, Teacher, Parent,
+    MechanicalFirstYearStudent, MechanicalSecondYearStudent,
+    MechanicalThirdYearStudent, MechanicalFourthYearStudent,
+    ElectricalFirstYearStudent, ElectricalSecondYearStudent,
+    ElectricalThirdYearStudent, ElectricalFourthYearStudent
+)
+
+
 def home(request):
     return render(request, "home.html")
-
-from django.contrib import messages
-from django.core.files.base import ContentFile
-from django.db import IntegrityError
-
-from .models import Student, Teacher, Parent
 
 
 def register(request):
@@ -30,10 +36,13 @@ def register(request):
                 parent_fullname = request.POST.get('parent_fullname')
                 guardian_teacher = request.POST.get('guardian_teacher')
                 password = request.POST.get('password')
+                gender = request.POST.get('gender')
+                age = request.POST.get('age')
                 photo_data = request.POST.get('photo_data')
 
-                if not all([name, email, phone, address, roll_number, course, branch, year, parent_fullname, guardian_teacher, password, photo_data]):
-                    messages.error(request, "⚠️ Please fill all fields and capture a photo for Student Registration.")
+                if not all([name, email, phone, address, roll_number, course, branch, year,
+                            parent_fullname, guardian_teacher, password, gender, age, photo_data]):
+                    messages.error(request, "⚠️ Please fill all fields, select gender and age, and capture a photo for Student Registration.")
                     return redirect('register')
 
                 try:
@@ -41,7 +50,8 @@ def register(request):
                         name=name, email=email, phone=phone, address=address,
                         roll_number=roll_number, course=course, branch=branch,
                         year=year, parent_fullname=parent_fullname,
-                        guardian_teacher=guardian_teacher, password=password
+                        guardian_teacher=guardian_teacher, password=password,
+                        gender=gender, age=age
                     )
 
                     if photo_data.startswith("data:image"):
@@ -49,11 +59,37 @@ def register(request):
                         ext = format.split('/')[-1]
                         student.photo.save(f"{roll_number}.{ext}", ContentFile(base64.b64decode(imgstr)), save=False)
 
-                    student.save()
+                    student.save()  # ✅ Trigger branch-year signal
+
+                    # ---------------- Branch-Year info ----------------
+                    course_upper = course.strip().upper()
+                    branch_lower = branch.strip().lower()
+                    year_lower = year.strip().lower()
+
+                    if course_upper == "BE":
+                        if branch_lower == "mechanical":
+                            if year_lower == "first year":
+                                MechanicalFirstYearStudent.objects.get_or_create(student=student)
+                            elif year_lower == "second year":
+                                MechanicalSecondYearStudent.objects.get_or_create(student=student)
+                            elif year_lower == "third year":
+                                MechanicalThirdYearStudent.objects.get_or_create(student=student)
+                            elif year_lower == "fourth year":
+                                MechanicalFourthYearStudent.objects.get_or_create(student=student)
+                        elif branch_lower == "electrical":
+                            if year_lower == "first year":
+                                ElectricalFirstYearStudent.objects.get_or_create(student=student)
+                            elif year_lower == "second year":
+                                ElectricalSecondYearStudent.objects.get_or_create(student=student)
+                            elif year_lower == "third year":
+                                ElectricalThirdYearStudent.objects.get_or_create(student=student)
+                            elif year_lower == "fourth year":
+                                ElectricalFourthYearStudent.objects.get_or_create(student=student)
+
                     messages.success(request, "✅ Student Registered Successfully!")
                     return redirect('register_success')
 
-                except IntegrityError as e:
+                except IntegrityError:
                     messages.error(request, "❌ Duplicate Entry: Make sure Email, Name, and Roll Number are unique.")
                     return redirect('register')
 
@@ -67,17 +103,19 @@ def register(request):
                 subject = request.POST.get('subject')
                 employee_id = request.POST.get('employee_id')
                 password = request.POST.get('password')
+                gender = request.POST.get('gender')
                 photo_data = request.POST.get('photo_data')
 
-                if not all([name, email, phone, address, department, subject, employee_id, password, photo_data]):
-                    messages.error(request, "⚠️ Please fill all fields and capture a photo for Teacher Registration.")
+                if not all([name, email, phone, address, department, subject, employee_id, password, gender, photo_data]):
+                    messages.error(request, "⚠️ Please fill all fields, select gender, and capture a photo for Teacher Registration.")
                     return redirect('register')
 
                 try:
                     teacher = Teacher(
                         name=name, email=email, phone=phone, address=address,
                         department=department, subject=subject,
-                        employee_id=employee_id, password=password
+                        employee_id=employee_id, password=password,
+                        gender=gender
                     )
 
                     if photo_data.startswith("data:image"):
@@ -103,17 +141,19 @@ def register(request):
                 relation = request.POST.get('relation')
                 student_id = request.POST.get('student_id')
                 password = request.POST.get('password')
+                gender = request.POST.get('gender')
                 photo_data = request.POST.get('photo_data')
 
-                if not all([name, email, phone, address, aadhaar, relation, student_id, password, photo_data]):
-                    messages.error(request, "⚠️ Please fill all fields and capture a photo for Parent Registration.")
+                if not all([name, email, phone, address, aadhaar, relation, student_id, password, gender, photo_data]):
+                    messages.error(request, "⚠️ Please fill all fields, select gender, and capture a photo for Parent Registration.")
                     return redirect('register')
 
                 try:
                     parent = Parent(
                         name=name, email=email, phone=phone, address=address,
                         aadhaar=aadhaar, relation=relation,
-                        student_id=student_id, password=password
+                        student_id=student_id, password=password,
+                        gender=gender
                     )
 
                     if photo_data.startswith("data:image"):
@@ -136,10 +176,9 @@ def register(request):
     teachers = Teacher.objects.all()
     students = Student.objects.all()
     return render(request, 'register.html', {'teachers': teachers, 'students': students})
-# views.py
-from django.http import JsonResponse
-from .models import Student, Teacher, Parent
 
+
+# ----------------------- AJAX UNIQUE CHECK -----------------------
 def check_unique(request):
     field = request.GET.get("field")
     value = request.GET.get("value")
@@ -165,18 +204,12 @@ def register_success(request):
     return render(request, "register_success.html")
 
 
-
-
-
-from django.contrib import messages
-from .models import Student, Teacher, Parent
-
+# ----------------------- LOGIN VIEWS -----------------------
 def login_view(request):
     if request.method == 'POST':
         user_type = None
         user = None
 
-        # Detect which form is submitted
         if 'student_id' in request.POST:
             user_type = 'student'
             identifier = request.POST['student_id']
@@ -210,31 +243,26 @@ def login_view(request):
             except Parent.DoesNotExist:
                 user = None
 
-        # Authenticate
         if user:
             if user.password == password:
-                # Store user info in session
                 request.session['user_type'] = user_type
                 request.session['user_id'] = user.id
 
-                # Redirect to separate dashboards
                 if user_type == 'student':
                     return redirect('student_dashboard')
                 elif user_type == 'teacher':
                     return redirect('teacher_dashboard')
                 else:
                     return redirect('parent_dashboard')
-
             else:
                 messages.error(request, 'Incorrect password.')
         else:
             messages.error(request, 'User not found.')
 
-    return render(request, 'home.html')  # your login page template
+    return render(request, 'home.html')
 
 
-
-#dashboard views
+# ----------------------- DASHBOARDS -----------------------
 def student_dashboard(request):
     user_id = request.session.get('user_id')
     if not user_id:
@@ -242,12 +270,14 @@ def student_dashboard(request):
     user = Student.objects.get(id=user_id)
     return render(request, 'student_dashboard.html', {'user': user})
 
+
 def teacher_dashboard(request):
     user_id = request.session.get('user_id')
     if not user_id:
         return redirect('login')
     user = Teacher.objects.get(id=user_id)
     return render(request, 'teacher_dashboard.html', {'user': user})
+
 
 def parent_dashboard(request):
     user_id = request.session.get('user_id')
@@ -257,20 +287,17 @@ def parent_dashboard(request):
     return render(request, 'parent_dashboard.html', {'user': user})
 
 
-#user login code
-
+# ----------------------- ALTERNATIVE LOGIN HANDLER -----------------------
 def user_login(request):
     if request.method == "POST":
-        # Determine which form submitted
         student_id = request.POST.get('student_id')
         teacher_id = request.POST.get('teacher_id')
         parent_id = request.POST.get('parent_id')
         password = request.POST.get('password')
 
-        # Student login
         if student_id:
             try:
-                student = Student.objects.get(email=student_id)  # or use roll_number
+                student = Student.objects.get(email=student_id)
                 if student.password == password:
                     return redirect('student_dashboard')
                 else:
@@ -278,10 +305,9 @@ def user_login(request):
             except Student.DoesNotExist:
                 messages.error(request, "Student not found.")
 
-        # Teacher login
         elif teacher_id:
             try:
-                teacher = Teacher.objects.get(email=teacher_id)  # or use employee_id
+                teacher = Teacher.objects.get(email=teacher_id)
                 if teacher.password == password:
                     return redirect('teacher_dashboard')
                 else:
@@ -289,10 +315,9 @@ def user_login(request):
             except Teacher.DoesNotExist:
                 messages.error(request, "Teacher not found.")
 
-        # Parent login
         elif parent_id:
             try:
-                parent = Parent.objects.get(email=parent_id)  # or use student relation
+                parent = Parent.objects.get(email=parent_id)
                 if parent.password == password:
                     return redirect('parent_dashboard')
                 else:
@@ -301,16 +326,3 @@ def user_login(request):
                 messages.error(request, "Parent not found.")
 
     return redirect('home')
-
-
-#studant dashboard acces 
-
-
-def student_dashboard(request):
-    return render(request, "student_dashboard.html")
-
-def teacher_dashboard(request):
-    return render(request, "teacher_dashboard.html")
-
-def parent_dashboard(request):
-    return render(request, "parent_dashboard.html")
