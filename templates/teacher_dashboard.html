@@ -1,32 +1,223 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Teacher Dashboard</title>
-    <style>
-        body { font-family: Arial, sans-serif; background: #f0f2f5; padding: 20px; }
-        .dashboard { max-width: 600px; margin: auto; background: #fff; padding: 30px; border-radius: 10px; box-shadow: 0 5px 20px rgba(0,0,0,0.1); }
-        img { border-radius: 50%; width: 120px; height: 120px; object-fit: cover; }
-        h1 { color: #001F54; }
-        p { font-size: 16px; margin: 5px 0; }
-        a { text-decoration: none; color: #FCA311; font-weight: bold; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Teacher Dashboard</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/face-api.js"></script>
+<style>
+  body { font-family: Arial, sans-serif; background: #f0f2f5; }
+  #attCamera, #attCanvas { max-width: 100%; height: auto; }
+</style>
 </head>
 <body>
-    <div class="dashboard">
-        <h1>Welcome, {{ user.name }}!</h1>
-        {% if user.photo %}
-            <img src="{{ user.photo.url }}" alt="Profile Picture">
-        {% else %}
-            <p>No photo uploaded</p>
-        {% endif %}
-        <p>Email: {{ user.email }}</p>
-        <p>Phone: {{ user.phone }}</p>
-        <p>Department: {{ user.department }}</p>
-        <p>Subject: {{ user.subject }}</p>
-        <p>Employee ID: {{ user.employee_id }}</p>
-        <a href="{% url 'login' %}">Logout</a>
+
+<!-- Mobile Hamburger -->
+<div class="md:hidden flex justify-between items-center bg-white p-4 shadow fixed w-full z-50">
+  <h2 class="text-lg font-bold text-blue-600">Teacher Dashboard</h2>
+  <button id="menuBtn" class="text-xl font-bold">&#9776;</button>
+</div>
+
+<div class="flex flex-col md:flex-row min-h-screen pt-16 md:pt-0">
+  <!-- Sidebar -->
+  <aside id="sidebar" class="fixed top-0 left-0 h-full w-64 bg-white shadow-lg p-4 flex flex-col justify-between transform -translate-x-full md:translate-x-0 transition-transform duration-300 z-50">
+    <div>
+      <h2 class="text-xl font-bold mb-6 text-blue-600 hidden md:block">Teacher Dashboard</h2>
+      <ul class="space-y-2">
+        <li><button onclick="showPage('attendance');toggleSidebar()" class="w-full text-left px-3 py-2 hover:bg-gray-100 rounded">📅 Attendance</button></li>
+        <li><button onclick="showPage('timeTable');toggleSidebar()" class="w-full text-left px-3 py-2 hover:bg-gray-100 rounded">📘 Time Table</button></li>
+        <li><button onclick="showPage('result');toggleSidebar()" class="w-full text-left px-3 py-2 hover:bg-gray-100 rounded">📊 Result</button></li>
+        <li><button onclick="showPage('emergency');toggleSidebar()" class="w-full text-left px-3 py-2 text-red-600 hover:bg-red-50 rounded">🚨 Emergency</button></li>
+        <li><button onclick="showPage('smartLeave');toggleSidebar()" class="w-full text-left px-3 py-2 hover:bg-gray-100 rounded">📝 Smart Leave</button></li>
+        <li><button onclick="showPage('notifications');toggleSidebar()" class="w-full text-left px-3 py-2 text-yellow-700 hover:bg-yellow-50 rounded">🔔 Notifications</button></li>
+      </ul>
     </div>
+    <div class="mt-4 md:mt-6">
+      <a href="{% url 'user_logout' %}" class="block text-center px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700">🚪 Logout</a>
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="flex-1 p-4 md:p-6 md:ml-64">
+
+    <!-- Profile -->
+    <div class="bg-white rounded-2xl shadow-md p-4 flex flex-col sm:flex-row items-center gap-4 mb-6">
+      {% if user.photo %}
+        <img src="{{ user.photo.url }}" alt="profile" class="w-16 h-16 rounded-full" />
+      {% else %}
+        <div class="w-16 h-16 rounded-full bg-gray-300 flex items-center justify-center text-gray-600">No Photo</div>
+      {% endif %}
+      <div class="text-center sm:text-left flex-1">
+        <h3 class="font-bold text-lg">{{ user.name }}</h3>
+        <p class="text-gray-600 text-sm">{{ user.department }} | {{ user.subject }}</p>
+        <p><b>Email:</b> {{ user.email }}</p>
+        <p><b>Mobile:</b> {{ user.phone }}</p>
+        <p><b>Employee ID:</b> {{ user.employee_id }}</p>
+      </div>
+    </div>
+
+    <!-- Attendance -->
+    <div id="attendance" class="page">
+      <h2 class="text-xl font-bold mb-4">📅 Attendance</h2>
+      <div class="flex flex-wrap gap-2 mb-4">
+        <button id="startBtn" class="px-4 py-2 bg-blue-600 text-white rounded flex-1">Start Camera</button>
+        <button id="takePhotoBtn" class="px-4 py-2 bg-green-600 text-white rounded flex-1" disabled>Take Photo</button>
+        <button id="stopBtn" class="px-4 py-2 bg-red-600 text-white rounded flex-1" disabled>Stop Camera</button>
+      </div>
+      <div class="relative mb-4 w-full overflow-hidden">
+        <video id="attCamera" class="rounded border w-full h-auto max-h-96" autoplay muted></video>
+        <canvas id="attCanvas" class="absolute top-0 left-0 rounded w-full h-auto"></canvas>
+      </div>
+      <p id="presentCounterTop" class="text-green-600 font-bold mt-2">Total Present: 0/0</p>
+      <div class="mt-4 overflow-x-auto">
+        <table class="w-full border rounded table-auto text-center">
+          <thead class="bg-gray-200">
+            <tr>
+              <th class="px-2 py-1 border">Name</th>
+              <th class="px-2 py-1 border">Present</th>
+              <th class="px-2 py-1 border">Absent</th>
+              <th class="px-2 py-1 border">Status</th>
+            </tr>
+          </thead>
+          <tbody id="attendanceTable"></tbody>
+        </table>
+      </div>
+      <div class="flex flex-wrap gap-2 mt-2">
+        <button onclick="submitAttendance()" class="px-4 py-2 bg-yellow-500 text-white rounded flex-1">Submit Attendance</button>
+        <button onclick="downloadCSV()" class="px-4 py-2 bg-yellow-600 text-white rounded flex-1">Download CSV</button>
+      </div>
+      <div class="mt-4">
+        <h3 class="text-lg font-semibold">✅ Marked Attendance</h3>
+        <ul id="autoAttendanceList" class="list-disc pl-6 text-gray-700"></ul>
+      </div>
+      <div class="mt-4">
+        <h3 class="text-lg font-semibold text-red-600">❌ Absent Students</h3>
+        <ul id="absentList" class="list-disc pl-6 text-gray-700"></ul>
+      </div>
+    </div>
+
+    <!-- Time Table -->
+    <div id="timeTable" class="page hidden">
+      <h2 class="text-xl font-bold mb-4">📘 Time Table Upload</h2>
+      <div class="flex flex-col sm:flex-row items-center gap-2 mb-4">
+        <select id="ttYearSelect" class="border px-2 py-1 rounded flex-1">
+          <option value="">Select Year</option>
+          <option value="1st Year">1st Year</option>
+          <option value="2nd Year">2nd Year</option>
+          <option value="3rd Year">3rd Year</option>
+          <option value="4th Year">4th Year</option>
+        </select>
+        <input type="file" id="ttFile" class="border px-2 py-1 rounded flex-1" />
+        <button onclick="uploadTimeTable()" class="px-4 py-2 bg-blue-600 text-white rounded flex-1">Upload</button>
+      </div>
+      <ul id="uploadedTimeTables" class="list-disc pl-6 text-gray-700 mb-6"></ul>
+      <h3 class="text-lg font-semibold mb-2">🧑‍🏫 My Time Table</h3>
+      <div id="myTimeTable" class="bg-white p-4 rounded shadow text-center">
+        <p class="text-gray-500">No time table uploaded yet.</p>
+      </div>
+    </div>
+
+    <!-- Result -->
+    <div id="result" class="page hidden">
+      <h2 class="text-xl font-bold mb-4">📊 Result Upload</h2>
+      <div class="flex flex-col sm:flex-row items-center gap-2 mb-4">
+        <select id="resYearSelect" class="border px-2 py-1 rounded flex-1">
+          <option value="">Select Year</option>
+          <option value="1st Year">1st Year</option>
+          <option value="2nd Year">2nd Year</option>
+          <option value="3rd Year">3rd Year</option>
+          <option value="4th Year">4th Year</option>
+        </select>
+        <input type="file" id="resFile" class="border px-2 py-1 rounded flex-1" />
+        <button onclick="uploadResult()" class="px-4 py-2 bg-green-600 text-white rounded flex-1">Upload</button>
+      </div>
+      <ul id="uploadedResults" class="list-disc pl-6 text-gray-700"></ul>
+    </div>
+
+    <!-- Emergency -->
+    <div id="emergency" class="page hidden">
+      <h2 class="text-2xl font-bold mb-4 text-red-600">🚨 Emergency</h2>
+      <div class="bg-white p-4 rounded shadow mb-4">
+        <input type="text" id="emergencyTitle" placeholder="Enter emergency title" class="border px-3 py-2 rounded w-full mb-2" />
+        <textarea id="emergencyMessage" placeholder="Write emergency message..." class="border px-3 py-2 rounded w-full mb-2"></textarea>
+        <button onclick="sendEmergency()" class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 w-full sm:w-auto">Send Alert</button>
+      </div>
+      <ul id="emergencyList" class="list-disc pl-6 text-gray-700">
+        <li class="text-gray-500">No emergency alerts yet.</li>
+      </ul>
+    </div>
+
+    <!-- Smart Leave -->
+    <div id="smartLeave" class="page hidden">
+      <h2 class="text-2xl font-bold mb-4 text-indigo-600">📝 Smart Leave</h2>
+      <div class="bg-white shadow-lg rounded-lg p-6 w-full max-w-md">
+        <form id="leaveForm" class="space-y-4">
+          <div>
+            <label class="block text-gray-700 font-medium mb-1">Teacher Name</label>
+            <input type="text" id="teacherName" required class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none" value="{{ user.name }}" readonly />
+          </div>
+          <div>
+            <label class="block text-gray-700 font-medium mb-1">Leave Type</label>
+            <select id="leaveType" required class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none">
+              <option value="">Select Type</option>
+              <option value="Sick Leave">Sick Leave</option>
+              <option value="Casual Leave">Casual Leave</option>
+              <option value="Emergency Leave">Emergency Leave</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-gray-700 font-medium mb-1">From Date</label>
+            <input type="date" id="fromDate" required class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none" />
+          </div>
+          <div>
+            <label class="block text-gray-700 font-medium mb-1">To Date</label>
+            <input type="date" id="toDate" required class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none" />
+          </div>
+          <div>
+            <label class="block text-gray-700 font-medium mb-1">Reason</label>
+            <textarea id="reason" rows="3" required class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none"></textarea>
+          </div>
+          <button type="submit" class="w-full bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700 transition">Submit Leave Request</button>
+        </form>
+        <div id="submittedLeaves" class="mt-6">
+          <h3 class="text-lg font-semibold text-gray-700 mb-2">Submitted Leaves</h3>
+          <ul id="leaveList" class="list-disc list-inside text-gray-600 space-y-1"></ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- Notifications -->
+    <div id="notifications" class="page hidden">
+      <h2 class="text-xl font-bold mb-4">🔔 Notifications</h2>
+      <p class="text-gray-600">Notifications will appear here...</p>
+    </div>
+
+  </main>
+</div>
+
+<script>
+// Sidebar
+const sidebar=document.getElementById("sidebar"),menuBtn=document.getElementById("menuBtn");
+menuBtn.addEventListener("click",()=>{sidebar.classList.toggle("-translate-x-full")});
+function toggleSidebar(){if(window.innerWidth<768) sidebar.classList.add("-translate-x-full")}
+
+// Page tabs
+function showPage(pageId){document.querySelectorAll(".page").forEach(p=>p.classList.add("hidden"));document.getElementById(pageId).classList.remove("hidden");}
+window.onload=()=>showPage("attendance");
+
+// Smart Leave Form
+const leaveForm=document.getElementById("leaveForm");
+leaveForm.addEventListener("submit",function(e){
+  e.preventDefault();
+  const name=document.getElementById("teacherName").value,type=document.getElementById("leaveType").value,
+        from=document.getElementById("fromDate").value,to=document.getElementById("toDate").value,
+        reason=document.getElementById("reason").value;
+  const li=document.createElement("li"); li.textContent=`${name} | ${type} | ${from} to ${to} | ${reason}`;
+  document.getElementById("leaveList").appendChild(li);
+  leaveForm.reset();
+});
+</script>
+
 </body>
 </html>
