@@ -22,9 +22,9 @@ class Teacher(models.Model):
     email = models.EmailField(unique=True)
     phone = models.CharField(max_length=20)
     address = models.TextField()
-    department = models.CharField(max_length=50)
+    department = models.CharField(max_length=50)  # Could be a ForeignKey to Department if you want dynamic dropdowns
     subject = models.CharField(max_length=50)
-    year = models.CharField(max_length=20, default="1")  # Added year for Teacher-Year mapping
+    year = models.CharField(max_length=20, default="1")  # 1st year, 2nd year, etc.
     employee_id = models.CharField(max_length=20, unique=True)
     password = models.CharField(max_length=100)
     photo = models.ImageField(upload_to='teachers/', blank=True, null=True)
@@ -215,7 +215,6 @@ def save_branch_year_student(sender, instance, created, **kwargs):
     branch = instance.branch.strip().lower()
     year = instance.year.strip().lower()
 
-    # Branch-Year Mapping for Students
     if course == "BE":
         if branch == "mechanical":
             if year == "first year":
@@ -236,7 +235,6 @@ def save_branch_year_student(sender, instance, created, **kwargs):
             elif year == "fourth year":
                 ElectricalFourthYearStudent.objects.get_or_create(student=instance)
 
-    # Auto-create attendance for all subjects
     subjects = Subject.objects.filter(branch=instance.branch, year=instance.year)
     for subject in subjects:
         Attendance.objects.get_or_create(student=instance, subject=subject, date=date.today())
@@ -306,20 +304,21 @@ def save_teacher_year(sender, instance, created, **kwargs):
     year = instance.year.strip().lower()
 
     if dept == "mechanical":
-        if year == "1st year":
+        if year in ["1", "1st year", "first year"]:
             MechanicalFirstYearTeacher.objects.get_or_create(teacher=instance)
-        elif year == "2nd year":
+        elif year in ["2", "2nd year", "second year"]:
             MechanicalSecondYearTeacher.objects.get_or_create(teacher=instance)
-        elif year == "3rd year":
+        elif year in ["3", "3rd year", "third year"]:
             MechanicalThirdYearTeacher.objects.get_or_create(teacher=instance)
-        elif year == "4th year":
+        elif year in ["4", "4th year", "fourth year"]:
             MechanicalFourthYearTeacher.objects.get_or_create(teacher=instance)
+
     elif dept == "electrical":
-        if year == "1st year":
+        if year in ["1", "1st year", "first year"]:
             ElectricalFirstYearTeacher.objects.get_or_create(teacher=instance)
-        elif year == "2nd year":
+        elif year in ["2", "2nd year", "second year"]:
             ElectricalSecondYearTeacher.objects.get_or_create(teacher=instance)
-        elif year == "3rd year":
+        elif year in ["3", "3rd year", "third year"]:
             ElectricalThirdYearTeacher.objects.get_or_create(teacher=instance)
-        elif year == "4th year":
+        elif year in ["4", "4th year", "fourth year"]:
             ElectricalFourthYearTeacher.objects.get_or_create(teacher=instance)

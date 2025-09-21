@@ -19,13 +19,11 @@ from .models import (
     Subject, Attendance
 )
 
-
 # ----------------------- HELPER -----------------------
 def calculate_age(dob):
     """Calculate age from date of birth."""
     today = date.today()
     return today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
-
 
 def save_photo(instance, photo_data, filename_prefix):
     """Save base64 photo to model instance."""
@@ -34,17 +32,14 @@ def save_photo(instance, photo_data, filename_prefix):
         ext = format.split('/')[-1]
         instance.photo.save(f"{filename_prefix}.{ext}", ContentFile(base64.b64decode(imgstr)), save=False)
 
-
 # ----------------------- HOME -----------------------
 def home(request):
     return render(request, "home.html")
-
 
 # ----------------------- REGISTER -----------------------
 def register(request):
     if request.method == 'POST':
         form_type = request.POST.get('form_type')
-
         try:
             # ------------------ STUDENT FORM ------------------
             if form_type == "student":
@@ -70,8 +65,6 @@ def register(request):
 
                 dob = date.fromisoformat(dob_str)
                 age = calculate_age(dob)
-
-                # Get actual Teacher instance for guardian
                 guardian_teacher = Teacher.objects.filter(name=guardian_teacher_name).first()
 
                 student = Student(
@@ -81,7 +74,6 @@ def register(request):
                     guardian_teacher=guardian_teacher, password=password,
                     gender=gender, age=age, dob=dob
                 )
-
                 save_photo(student, photo_data, roll_number)
 
                 try:
@@ -90,7 +82,6 @@ def register(request):
                     # ---------------- Branch-Year info ----------------
                     branch_lower = branch.strip().lower()
                     year_lower = year.strip().lower()
-
                     # Mechanical Students
                     if branch_lower == "mechanical":
                         if "first" in year_lower:
@@ -153,16 +144,12 @@ def register(request):
                     employee_id=employee_id, password=password,
                     gender=gender, year=year
                 )
-
                 save_photo(teacher, photo_data, employee_id)
 
                 try:
                     teacher.save()
-
                     dept_lower = department.strip().lower()
                     year_lower = year.strip().lower()
-
-                    # Mechanical Teachers
                     if dept_lower == "mechanical":
                         if "first" in year_lower:
                             MechanicalFirstYearTeacher.objects.get_or_create(teacher=teacher)
@@ -172,7 +159,6 @@ def register(request):
                             MechanicalThirdYearTeacher.objects.get_or_create(teacher=teacher)
                         elif "fourth" in year_lower:
                             MechanicalFourthYearTeacher.objects.get_or_create(teacher=teacher)
-                    # Electrical Teachers
                     elif dept_lower == "electrical":
                         if "first" in year_lower:
                             ElectricalFirstYearTeacher.objects.get_or_create(teacher=teacher)
@@ -207,23 +193,19 @@ def register(request):
                     messages.error(request, "⚠️ Please fill all fields and capture a photo for Parent Registration.")
                     return redirect('register')
 
-                # Link actual Student instance
                 student = Student.objects.filter(id=student_id).first()
-
                 parent = Parent(
                     name=name, email=email, phone=phone, address=address,
                     aadhaar=aadhaar, relation=relation,
                     student=student, password=password,
                     gender=gender
                 )
-
                 save_photo(parent, photo_data, aadhaar)
 
                 try:
                     parent.save()
                     messages.success(request, "✅ Parent Registered Successfully!")
                     return redirect('register_success')
-
                 except IntegrityError:
                     messages.error(request, "❌ Duplicate Entry: Email or Aadhaar already exists.")
                     return redirect('register')
@@ -236,13 +218,11 @@ def register(request):
     students = Student.objects.all()
     return render(request, 'register.html', {'teachers': teachers, 'students': students})
 
-
 # ----------------------- AJAX UNIQUE CHECK -----------------------
 def check_unique(request):
     field = request.GET.get("field")
     value = request.GET.get("value")
     exists = False
-
     if field == "student_email":
         exists = Student.objects.filter(email=value).exists()
     elif field == "student_roll_number":
@@ -255,16 +235,13 @@ def check_unique(request):
         exists = Parent.objects.filter(email=value).exists()
     elif field == "parent_aadhaar":
         exists = Parent.objects.filter(aadhaar=value).exists()
-
     return JsonResponse({"exists": exists})
-
 
 # ----------------------- REGISTER SUCCESS -----------------------
 def register_success(request):
     return render(request, "register_success.html")
 
-
-# ----------------------- LOGIN VIEW -----------------------
+# ----------------------- LOGIN -----------------------
 def login_view(request):
     if request.method == 'POST':
         user_type = None
@@ -277,54 +254,37 @@ def login_view(request):
             try:
                 user = Student.objects.get(email=identifier)
             except Student.DoesNotExist:
-                try:
-                    user = Student.objects.get(roll_number=identifier)
-                except Student.DoesNotExist:
-                    user = None
-
+                user = Student.objects.filter(roll_number=identifier).first()
         elif 'teacher_id' in request.POST:
             user_type = 'teacher'
             try:
                 user = Teacher.objects.get(email=identifier)
             except Teacher.DoesNotExist:
-                try:
-                    user = Teacher.objects.get(employee_id=identifier)
-                except Teacher.DoesNotExist:
-                    user = None
-
+                user = Teacher.objects.filter(employee_id=identifier).first()
         elif 'parent_id' in request.POST:
             user_type = 'parent'
-            try:
-                user = Parent.objects.get(email=identifier)
-            except Parent.DoesNotExist:
-                user = None
+            user = Parent.objects.filter(email=identifier).first()
 
-        if user:
-            if user.password == password:
-                request.session['user_type'] = user_type
-                request.session['user_id'] = user.id
-                request.session['logged_in'] = True
-
-                if user_type == 'student':
-                    return redirect('student_dashboard')
-                elif user_type == 'teacher':
-                    return redirect('teacher_dashboard')
-                else:
-                    return redirect('parent_dashboard')
+        if user and user.password == password:
+            request.session['user_type'] = user_type
+            request.session['user_id'] = user.id
+            request.session['logged_in'] = True
+            if user_type == 'student':
+                return redirect('student_dashboard')
+            elif user_type == 'teacher':
+                return redirect('teacher_dashboard')
             else:
-                messages.error(request, 'Incorrect password.')
+                return redirect('parent_dashboard')
         else:
-            messages.error(request, 'User not found.')
+            messages.error(request, 'Invalid credentials.')
 
     return render(request, 'home.html')
-
 
 # ----------------------- LOGOUT -----------------------
 def user_logout(request):
     request.session.flush()
     messages.success(request, "You have been logged out successfully.")
     return redirect("login")
-
 
 # ----------------------- DASHBOARDS -----------------------
 def student_dashboard(request):
@@ -339,7 +299,6 @@ def student_dashboard(request):
         'photo_url': user.photo.url if user.photo else None
     })
 
-
 def teacher_dashboard(request):
     if not request.session.get('logged_in') or request.session.get('user_type') != 'teacher':
         return redirect('login')
@@ -350,13 +309,37 @@ def teacher_dashboard(request):
         'photo_url': user.photo.url if user.photo else None
     })
 
-
 def parent_dashboard(request):
     if not request.session.get('logged_in') or request.session.get('user_type') != 'parent':
         return redirect('login')
     user_id = request.session.get('user_id')
     user = Parent.objects.get(id=user_id)
+    student = user.student
+
+    # ------------------ DUMMY DATA FOR DASHBOARD ------------------
+    attendance_chart_data = []
+    subjects = Subject.objects.filter(branch=student.branch, year=student.year)
+    for i in range(6):
+        month = f"Month {i+1}"
+        present = 18
+        total = 20
+        attendance_chart_data.append({"month": month, "present": present, "total": total})
+
+    semesters_data = [
+        {
+            "name": f"Semester {i+1}",
+            "subjects": [{"name": sub.name, "marks": 75, "total": 100} for sub in subjects]
+        } for i in range(2)
+    ]
+
+    notifications = [
+        {"title": "Notice", "message": "School will be closed tomorrow", "time": "2025-09-21T10:00:00"}
+    ]
+
     return render(request, 'parent_dashboard.html', {
-        'user': user,
-        'photo_url': user.photo.url if user.photo else None
+        'parent': user,
+        'student': student,
+        'attendance_chart_data': attendance_chart_data,
+        'semesters_data': semesters_data,
+        'notifications': notifications
     })

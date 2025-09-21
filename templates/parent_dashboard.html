@@ -1,54 +1,258 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="hi">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Parent Dashboard</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #f8f9fa;
-            text-align: center;
-            padding: 40px;
-        }
-        .dashboard {
-            background: white;
-            padding: 30px;
-            max-width: 600px;
-            margin: auto;
-            border-radius: 15px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
-            animation: fadeIn 0.5s ease-in-out;
-        }
-        h1 {
-            color: #0A3D62;
-        }
-        p {
-            color: #333;
-            font-size: 18px;
-        }
-        .logout-btn {
-            margin-top: 20px;
-            padding: 12px 20px;
-            background-color: #2E86DE;
-            color: white;
-            font-weight: bold;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-    </style>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Parents Dashboard</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+  #sidebar { min-width: 260px; }
+  .notification-bubble { position: absolute; top: -6px; right: -6px; }
+  table { border-collapse: collapse; width: 100%; }
+  th, td { border: 1px solid #ddd; padding: 0.5rem; }
+  .section-table-wrapper { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  
+  /* Chart container background */
+  #attendanceChartContainer { 
+    background: linear-gradient(to top, #f3f4f6 0%, #ffffff 100%); 
+    border-radius: 0.5rem;
+    padding: 1rem;
+    height: 100%;
+  }
+
+  @media (max-width: 768px) {
+    main { padding: 1rem; }
+    #sidebar { position: fixed; z-index: 50; height: 100vh; top: 0; left: 0; transform: translateX(-100%); transition: transform 0.3s ease; width: 240px; }
+    #sidebar.show { transform: translateX(0); }
+    #mobileToggle { display: block; }
+    table { min-width: 500px; }
+    #attendance.fullscreen { position: fixed; top:0; left:0; width:100vw; height:100vh; z-index:50; padding:1rem; background:white; overflow:auto; }
+    #attendanceChartContainer { padding: 0.5rem; height: 60vh; } /* smaller padding on mobile */
+    header, .flex, .section-table-wrapper { flex-wrap: wrap; }
+  }
+</style>
 </head>
-<body>
-    <div class="dashboard">
-        <h1>👨‍👩‍👧 Welcome, Parent!</h1>
-        <p>You are successfully logged in.</p>
-        <p>This is your parent dashboard.</p>
-        <button class="logout-btn" onclick="window.location.href='/'">Logout</button>
+<body class="bg-gray-100 font-sans">
+
+<div class="flex">
+
+  <!-- Sidebar -->
+  <aside id="sidebar" class="bg-white shadow-md p-4 md:static flex flex-col justify-between w-64 h-screen">
+    <div>
+      <div class="flex items-center gap-3 mb-6">
+        {% if parent.photo %}
+        <img src="{{ parent.photo.url }}" alt="parent" class="rounded-full w-16 h-16 object-cover" />
+        {% else %}
+        <img src="https://i.pravatar.cc/100" alt="parent" class="rounded-full w-16 h-16 object-cover" />
+        {% endif %}
+        <div>
+          <h2 class="font-semibold">{{ parent.name }}</h2>
+          <p class="text-sm text-gray-500">Parent of: {{ student.name }} ({{ student.course }} {{ student.branch }} {{ student.year }})</p>
+        </div>
+      </div>
+      <nav class="space-y-2">
+        <button class="w-full text-left px-3 py-2 rounded hover:bg-gray-50" onclick="showSection('attendance')">📊 Attendance</button>
+        <button class="w-full text-left px-3 py-2 rounded hover:bg-gray-50" onclick="showSection('results')">📝 Results</button>
+        <button class="w-full text-left px-3 py-2 rounded hover:bg-gray-50" onclick="showSection('notifications')">🔔 Notifications</button>
+        <button class="w-full text-left px-3 py-2 rounded hover:bg-gray-50" onclick="showSection('emergency')">🚨 Emergency Alert</button>
+      </nav>
     </div>
+
+    <div class="mt-6">
+      <form method="POST" action="{% url 'logout' %}">
+        {% csrf_token %}
+        <button class="w-full text-left px-3 py-2 rounded bg-red-600 text-white hover:bg-red-700">🚪 Logout</button>
+      </form>
+    </div>
+  </aside>
+
+  <!-- Mobile toggle button -->
+  <button id="mobileToggle" class="fixed top-4 left-4 md:hidden z-50 p-2 bg-blue-600 text-white rounded">☰</button>
+
+  <!-- Main content -->
+  <main id="mainContent" class="flex-1 p-6 md:ml-64">
+
+    <!-- Top bar -->
+    <header class="flex items-center justify-between mb-6">
+      <h1 class="text-2xl font-bold">Parents Dashboard</h1>
+      <div class="flex items-center gap-4">
+        <div class="relative">
+          <button id="notifBtn" class="relative p-2 rounded hover:bg-gray-100" onclick="showSection('notifications')">🔔</button>
+          <span id="notifCount" class="notification-bubble inline-flex items-center justify-center bg-red-500 text-white text-xs rounded-full w-5 h-5">0</span>
+        </div>
+        <button class="px-3 py-2 bg-blue-600 text-white rounded" onclick="openEmergencyModal()">Send Emergency Alert</button>
+      </div>
+    </header>
+
+    <!-- Sections -->
+    <section id="attendance" class="bg-white p-6 rounded shadow-sm h-[60vh] md:h-[70vh]">
+      <div class="flex flex-col md:flex-row items-start md:items-center justify-between mb-4 gap-3">
+        <h2 class="text-lg font-semibold">Attendance</h2>
+        <div class="flex items-center gap-2 flex-wrap">
+          <button class="px-3 py-1 border rounded" onclick="downloadAttendanceCSV()">Download CSV</button>
+          <select id="attendanceRange" class="border rounded px-2 py-1" onchange="renderAttendanceChart()">
+            <option value="6">Last 6 months</option>
+            <option value="12">Last 12 months</option>
+          </select>
+          <button class="px-3 py-1 border rounded md:hidden" onclick="toggleAttendanceFullscreen()">Fullscreen</button>
+        </div>
+      </div>
+      <div class="h-full" id="attendanceChartContainer">
+        <canvas id="attendanceChart" class="w-full h-full"></canvas>
+      </div>
+      <div class="mt-4 text-sm text-gray-600">Overall attendance: <span id="overallAttendance">-- %</span></div>
+    </section>
+
+    <section id="results" class="bg-white p-6 rounded shadow-sm mt-6 hidden">
+      <div class="flex flex-col md:flex-row items-start md:items-center justify-between mb-4 gap-3">
+        <h2 class="text-lg font-semibold">Results</h2>
+        <div class="flex items-center gap-2 flex-wrap">
+          <button class="px-3 py-1 border rounded" onclick="downloadResultsCSV()">Download Results</button>
+          <button class="px-3 py-1 border rounded" onclick="toggleResultView()">Toggle Semester View</button>
+        </div>
+      </div>
+      <div id="resultsContent"></div>
+    </section>
+
+    <section id="notifications" class="bg-white p-6 rounded shadow-sm mt-6 hidden">
+      <div class="flex items-center justify-between mb-4">
+        <h2 class="text-lg font-semibold">Notifications</h2>
+        <div>
+          <button class="px-3 py-1 border rounded" onclick="clearNotifications()">Clear All</button>
+        </div>
+      </div>
+      <ul id="notificationList" class="space-y-2"></ul>
+    </section>
+
+    <section id="emergency" class="bg-white p-6 rounded shadow-sm mt-6 hidden">
+      <h2 class="text-lg font-semibold mb-4">Emergency Contact & Alert</h2>
+      <form id="emergencyForm" class="space-y-3" onsubmit="submitEmergency(event)">
+        <input id="parentName" class="w-full border rounded px-3 py-2" placeholder="Your Name" required value="{{ parent.name }}" />
+        <input id="parentContact" class="w-full border rounded px-3 py-2" placeholder="Contact Number" required value="{{ parent.phone }}" />
+        <textarea id="emergencyMessage" class="w-full border rounded px-3 py-2" rows="4" placeholder="Message" required></textarea>
+        <div class="flex flex-col md:flex-row gap-3">
+          <button type="submit" class="px-4 py-2 bg-red-600 text-white rounded">Send Alert</button>
+          <button type="button" class="px-4 py-2 border rounded" onclick="addToContacts()">Save Contact</button>
+        </div>
+      </form>
+    </section>
+  </main>
+</div>
+
+<!-- Emergency modal -->
+<div id="emModal" class="fixed inset-0 bg-black bg-opacity-40 hidden items-center justify-center z-50 p-4">
+  <div class="bg-white p-6 rounded w-full max-w-lg">
+    <div class="flex items-center justify-between mb-3">
+      <h3 class="text-lg font-semibold">Send Emergency Alert</h3>
+      <button onclick="closeEmergencyModal()">✕</button>
+    </div>
+    <form onsubmit="submitEmergency(event)">
+      <input id="modalParentName" class="w-full border rounded px-3 py-2 mb-2" placeholder="Your name" required value="{{ parent.name }}" />
+      <input id="modalParentContact" class="w-full border rounded px-3 py-2 mb-2" placeholder="Contact" required value="{{ parent.phone }}" />
+      <textarea id="modalEmergencyMessage" class="w-full border rounded px-3 py-2 mb-2" rows="4" placeholder="Message" required></textarea>
+      <div class="flex justify-end gap-2 mt-2 flex-wrap">
+        <button type="button" class="px-4 py-2 border rounded" onclick="closeEmergencyModal()">Cancel</button>
+        <button type="submit" class="px-4 py-2 bg-red-600 text-white rounded">Send Alert</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  // Django dynamic data
+  const sampleAttendance = {{ attendance_chart_data|safe }};
+  const sampleResults = {{ semesters_data|safe }};
+  const NOTIFICATIONS = {{ notifications|safe }};
+  let showAllSemesters = true;
+  let attendanceChart;
+
+  // Mobile sidebar toggle
+  const sidebar = document.getElementById('sidebar');
+  document.getElementById('mobileToggle').addEventListener('click', ()=>{ sidebar.classList.toggle('show'); });
+
+  function renderAttendanceChart(){
+    const monthsCount=parseInt(document.getElementById('attendanceRange').value);
+    const data=sampleAttendance.slice(-monthsCount);
+    const labels=data.map(d=>d.month);
+    const percentages=data.map(d=>Math.round((d.present/d.total)*100));
+    const ctx=document.getElementById('attendanceChart');
+    if(attendanceChart) attendanceChart.destroy();
+    attendanceChart=new Chart(ctx,{
+      type: 'bar',
+      data: { labels,datasets:[{ label:'Attendance %', data:percentages, backgroundColor:'#3b82f6' }] },
+      options: { responsive:true, maintainAspectRatio:false, layout:{padding:10}, scales:{ y:{ beginAtZero:true,max:100 } } }
+    });
+    const overall=Math.round(percentages.reduce((a,b)=>a+b,0)/percentages.length);
+    document.getElementById('overallAttendance').textContent=overall+' %';
+  }
+
+  function toggleAttendanceFullscreen(){ document.getElementById('attendance').classList.toggle('fullscreen'); }
+
+  function downloadAttendanceCSV(){
+    const rows=[['Month','Present','Total','Percentage']];
+    sampleAttendance.forEach(r=>rows.push([r.month,r.present,r.total,Math.round((r.present/r.total*100))+'%']));
+    const blob=new Blob([rows.map(r=>r.join(',')).join('\n')],{type:'text/csv'});
+    const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='attendance.csv'; a.click(); URL.revokeObjectURL(url);
+  }
+
+  function renderResults(){
+    const container=document.getElementById('resultsContent'); container.innerHTML='';
+    const semsToRender=showAllSemesters?sampleResults.semesters:[sampleResults.semesters[sampleResults.semesters.length-1]];
+    semsToRender.forEach(sem=>{
+      const div=document.createElement('div'); div.className='mb-4 section-table-wrapper';
+      const title=document.createElement('h3'); title.className='font-semibold'; title.textContent=sem.name;
+      const table=document.createElement('table');
+      table.innerHTML=`<thead><tr><th>Subject</th><th>Marks</th><th>Total</th><th>Pointer</th></tr></thead>`;
+      const tbody=document.createElement('tbody'); let obtTotal=0,fullTotal=0;
+      sem.subjects.forEach(s=>{ const pointer=(s.marks/s.total*10).toFixed(2); obtTotal+=s.marks; fullTotal+=s.total;
+        const tr=document.createElement('tr'); tr.innerHTML=`<td>${s.name}</td><td>${s.marks}</td><td>${s.total}</td><td>${pointer}</td>`; tbody.appendChild(tr);
+      });
+      table.appendChild(tbody); const overallPointer=(obtTotal/fullTotal*10).toFixed(2);
+      const tfoot=document.createElement('tfoot'); tfoot.innerHTML=`<tr class='font-bold'><td>Total</td><td>${obtTotal}</td><td>${fullTotal}</td><td>${overallPointer}</td></tr>`; table.appendChild(tfoot);
+      div.appendChild(title); div.appendChild(table);
+      const semPointerDiv=document.createElement('div'); semPointerDiv.className='mt-1 text-right text-sm text-gray-600'; semPointerDiv.textContent=`Semester Pointer (CGPA): ${overallPointer}`; div.appendChild(semPointerDiv);
+      container.appendChild(div);
+    });
+  }
+
+  function toggleResultView(){ showAllSemesters=!showAllSemesters; renderResults(); }
+
+  function renderNotifications(){
+    const list=document.getElementById('notificationList'); list.innerHTML='';
+    if(NOTIFICATIONS.length===0){ list.innerHTML='<li class="text-gray-500">No notifications</li>'; return;}
+    NOTIFICATIONS.forEach(n=>{
+      const li=document.createElement('li'); li.className='border p-3 rounded flex justify-between items-start';
+      li.innerHTML=`<div><div class='font-medium'>${n.title}</div><div class='text-sm text-gray-600'>${n.message}</div><div class='text-xs text-gray-400 mt-1'>${new Date(n.time).toLocaleString()}</div></div>`;
+      list.appendChild(li);
+    });
+    document.getElementById('notifCount').textContent = NOTIFICATIONS.length;
+  }
+
+  function submitEmergency(e){ e.preventDefault();
+    const name=document.getElementById('modalParentName')?.value||document.getElementById('parentName')?.value;
+    const contact=document.getElementById('modalParentContact')?.value||document.getElementById('parentContact')?.value;
+    const message=document.getElementById('modalEmergencyMessage')?.value||document.getElementById('emergencyMessage')?.value;
+    if(!name||!contact||!message) return alert('Please fill all fields');
+    alert('Emergency alert sent to school (simulated).'); closeEmergencyModal();
+  }
+
+  function addToContacts(){ const name=document.getElementById('parentName').value; const contact=document.getElementById('parentContact').value; if(!name||!contact) return alert('Fill name and contact'); alert('Contact saved locally (simulated).'); }
+
+  function openEmergencyModal(){ document.getElementById('emModal').classList.remove('hidden'); document.getElementById('emModal').classList.add('flex'); }
+  function closeEmergencyModal(){ document.getElementById('emModal').classList.add('hidden'); document.getElementById('emModal').classList.remove('flex'); }
+
+  function showSection(id){
+    ['attendance','results','notifications','emergency'].forEach(s=>document.getElementById(s).classList.add('hidden'));
+    document.getElementById(id).classList.remove('hidden');
+    if(window.innerWidth < 768) sidebar.classList.remove('show');
+    if(id==='notifications') renderNotifications();
+  }
+
+  window.addEventListener('load', ()=>{
+    renderAttendanceChart(); renderResults(); renderNotifications(); showSection('attendance');
+  });
+</script>
+
 </body>
 </html>
