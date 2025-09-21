@@ -33,6 +33,10 @@
           class="w-full text-left block text-gray-700 hover:text-blue-600">📌 Smart Leave</button>
         <button onclick="showPage('notification')"
           class="w-full text-left block text-yellow-600 hover:text-yellow-700 font-semibold">🔔 Notifications</button>
+        <form method="post" action="{% url 'logout' %}">
+          {% csrf_token %}
+          <button type="submit" class="w-full text-left block text-gray-700 hover:text-red-600 font-semibold mt-4">🚪 Logout</button>
+        </form>
       </nav>
     </aside>
 
@@ -48,9 +52,9 @@
       <div
         class="bg-white p-4 rounded-xl shadow-md flex flex-col md:flex-row items-center gap-4 mb-6 w-full max-w-5xl mx-auto">
         {% if user.photo %}
-        <img src="{{ user.photo.url }}" class="w-20 h-20 rounded-full border" alt="Profile">
+          <img src="{{ user.photo.url }}" class="w-20 h-20 rounded-full border" alt="Profile">
         {% else %}
-        <img src="https://i.pravatar.cc/100" class="w-20 h-20 rounded-full border" alt="Profile">
+          <img src="https://i.pravatar.cc/100" class="w-20 h-20 rounded-full border" alt="Profile">
         {% endif %}
         <div class="text-center md:text-left">
           <h2 class="text-xl font-bold">{{ user.name }}</h2>
@@ -60,7 +64,7 @@
             <p><b>Mobile No:</b> {{ user.phone }}</p>
             <p><b>Gender:</b> {{ user.gender }}</p>
             <p><b>DOB:</b> {{ user.age }}</p>
-            <p><b>ID No:</b> {{ user.roll_number }}</p>
+            <p><b>ID No:</b> {% if user.roll_number %}{{ user.roll_number }}{% else %}{{ user.id }}{% endif %}</p>
           </div>
         </div>
       </div>
@@ -72,14 +76,11 @@
         <div class="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
           <input type="date" id="attendanceDate"
             class="border p-2 rounded flex-1 min-w-[150px]" onchange="filterAttendanceByDate(this.value)">
-          <button
-            class="bg-blue-600 text-white px-3 py-2 rounded hover:bg-blue-700 whitespace-nowrap"
-            onclick="showAttendanceWeek()">Week %</button>
-          <button
-            class="bg-blue-600 text-white px-3 py-2 rounded hover:bg-blue-700 whitespace-nowrap"
-            onclick="showAttendanceMonth()">Month %</button>
-          <button
-            onclick="downloadAttendance()"
+          <button class="bg-blue-600 text-white px-3 py-2 rounded hover:bg-blue-700 whitespace-nowrap"
+            onclick="filterAttendanceWeek()">Week %</button>
+          <button class="bg-blue-600 text-white px-3 py-2 rounded hover:bg-blue-700 whitespace-nowrap"
+            onclick="filterAttendanceMonth()">Month %</button>
+          <button onclick="downloadAttendance()"
             class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 whitespace-nowrap">⬇️ Download</button>
         </div>
         <canvas id="attendanceChart" class="mb-4"></canvas>
@@ -99,29 +100,140 @@
                 <td class="p-2">{{ record.date }}</td>
                 <td class="p-2">{{ record.subject.name }}</td>
                 <td class="p-2">
-                  {% if record.status %}
-                  <span class="text-green-600 font-semibold">Present</span>
+                  {% if record.status == "Present" %}
+                    <span class="text-green-600 font-semibold">{{ record.status }}</span>
                   {% else %}
-                  <span class="text-red-600 font-semibold">Absent</span>
+                    <span class="text-red-600 font-semibold">{{ record.status }}</span>
                   {% endif %}
                 </td>
               </tr>
               {% empty %}
-              <tr>
-                <td colspan="3" class="p-2">No attendance records found.</td>
-              </tr>
+              <tr><td colspan="3" class="p-2">No attendance records found.</td></tr>
               {% endfor %}
             </tbody>
           </table>
         </div>
       </section>
 
-      <!-- Other sections (timetable, subjects, emergency, leave, notification) -->
-      <!-- Keep your original structure intact -->
-      {{ block.super }}
+      <!-- Timetable Page -->
+      <div id="timetable"
+        class="page hidden bg-white p-4 rounded-xl shadow-md max-w-5xl mx-auto overflow-x-auto">
+        <h3 class="text-lg font-semibold mb-2">📖 Time Table</h3>
+        <div class="flex flex-wrap gap-3 mb-4">
+          {% for y in "1234" %}
+          <button onclick="showTimetable({{ y }}, this)"
+            class="year-btn bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">{{ y }} Year</button>
+          {% endfor %}
+          <button onclick="downloadTimetable()"
+            class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">⬇️ Download</button>
+        </div>
+        <div class="overflow-x-auto">
+          {% if timetable_image_url %}
+            <img id="timetableImage" src="{{ timetable_image_url }}" alt="Class Timetable"
+              class="w-full h-auto rounded shadow-md cursor-pointer transition-opacity duration-500 opacity-100">
+          {% else %}
+            <p>No timetable available.</p>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Subjects & Marks Page -->
+      <div id="subjects"
+        class="page hidden bg-white p-4 rounded-xl shadow-md max-w-5xl mx-auto overflow-x-auto">
+        <h3 class="text-lg font-semibold mb-2">📝 Result</h3>
+        <div id="marksYearButtons" class="flex flex-wrap gap-3 mb-4">
+          {% for year in "1234" %}
+          <button onclick="selectYear({{ year }}, this)"
+            class="marks-year-btn bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">{{ year }} Year</button>
+          {% endfor %}
+          <button onclick="downloadResult()"
+            class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">⬇️ Download</button>
+        </div>
+        <div id="marksSemesterButtons" class="flex flex-wrap gap-3 mb-4 hidden"></div>
+        <table id="marksTable" class="min-w-[600px] table-auto w-full text-sm text-center border min-w-max">
+          <thead class="bg-gray-100">
+            <tr>
+              <th class="border p-2">Subject</th>
+              <th class="border p-2">Max Marks</th>
+              <th class="border p-2">Obtained</th>
+              <th class="border p-2">Grade</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for mark in marks %}
+            <tr>
+              <td class="border p-2">{{ mark.subject.name }}</td>
+              <td class="border p-2">{{ mark.max_marks }}</td>
+              <td class="border p-2">{{ mark.obtained_marks }}</td>
+              <td class="border p-2">{{ mark.grade }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="4" class="p-2">No marks available.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Emergency Alert -->
+      <div id="emergency"
+        class="page hidden bg-white p-4 rounded-xl shadow-md max-w-5xl mx-auto overflow-x-auto">
+        <h3 class="text-lg font-semibold mb-2 text-red-600">🆘 Emergency Alert</h3>
+        <textarea class="w-full border rounded-lg p-2 mb-3" rows="3"
+          placeholder="Type your emergency message..."></textarea>
+        <button class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700">Send Alert 🚨</button>
+      </div>
+
+      <!-- Smart Leave -->
+      <div id="leave"
+        class="page hidden bg-white p-4 rounded-xl shadow-md max-w-5xl mx-auto overflow-x-auto">
+        <h3 class="text-lg font-semibold mb-2">📌 Smart Leave Management</h3>
+        <form id="leaveForm" class="space-y-3 mb-6">
+          <input type="text" id="studentName" placeholder="Student Name"
+            class="w-full border p-2 rounded-lg" value="{{ user.name }}" required>
+          <input type="date" id="leaveDate" class="w-full border p-2 rounded-lg" required>
+          <textarea id="leaveReason" placeholder="Reason for Leave"
+            class="w-full border p-2 rounded-lg" rows="3" required></textarea>
+          <button type="submit"
+            class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">Submit Leave Request</button>
+        </form>
+        <table class="min-w-[600px] table-auto w-full text-sm text-center border min-w-max">
+          <thead class="bg-gray-100">
+            <tr>
+              <th class="border p-2">Name</th>
+              <th class="border p-2">Date</th>
+              <th class="border p-2">Reason</th>
+              <th class="border p-2">Status</th>
+            </tr>
+          </thead>
+          <tbody id="leaveTable">
+            {% for leave in leaves %}
+            <tr>
+              <td class="border p-2">{{ leave.student.name }}</td>
+              <td class="border p-2">{{ leave.date }}</td>
+              <td class="border p-2">{{ leave.reason }}</td>
+              <td class="border p-2">{{ leave.status }}</td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="4" class="p-2">No leave requests found.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Notifications -->
+      <div id="notification"
+        class="page hidden bg-white p-4 rounded-xl shadow-md max-w-5xl mx-auto overflow-x-auto">
+        <h3 class="text-lg font-semibold mb-2 text-yellow-600">🔔 Notifications</h3>
+        <div id="notificationsList" class="space-y-3">
+          {% for notification in notifications %}
+          <div class="p-3 bg-yellow-100 rounded shadow">{{ notification.message }}</div>
+          {% empty %}
+          <div class="p-3 bg-yellow-100 rounded shadow">No notifications available.</div>
+          {% endfor %}
+        </div>
+      </div>
 
     </main>
-
   </div>
 
   <script>
@@ -133,18 +245,6 @@
       document.getElementById(id).classList.remove("hidden");
     }
 
-    function filterAttendanceByDate(selectedDate) {
-      const rows = document.querySelectorAll("#attendanceTableBody tr");
-      rows.forEach(row => {
-        if (row.cells[0].innerText === selectedDate) {
-          row.style.display = '';
-        } else {
-          row.style.display = 'none';
-        }
-      });
-    }
-
-    // Show Attendance as default on page load
     document.addEventListener('DOMContentLoaded', () => {
       showPage('attendance');
     });
