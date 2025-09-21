@@ -4,9 +4,9 @@ from .models import (
     MechanicalFirstYearStudent, MechanicalSecondYearStudent,
     MechanicalThirdYearStudent, MechanicalFourthYearStudent,
     ElectricalFirstYearStudent, ElectricalSecondYearStudent,
-    ElectricalThirdYearStudent, ElectricalFourthYearStudent
+    ElectricalThirdYearStudent, ElectricalFourthYearStudent,
+    Subject, Attendance
 )
-
 
 # -----------------------
 # ✅ TEACHER ADMIN
@@ -18,17 +18,23 @@ class TeacherAdmin(admin.ModelAdmin):
     list_filter = ("department", "subject", "gender")
     readonly_fields = ("image_tag",)
 
-
 # -----------------------
 # ✅ STUDENT ADMIN
 # -----------------------
+class AttendanceInline(admin.TabularInline):
+    model = Attendance
+    extra = 0
+    readonly_fields = ("subject", "date", "status")
+    can_delete = False
+    show_change_link = True
+
 @admin.register(Student)
 class StudentAdmin(admin.ModelAdmin):
     list_display = ("name", "email", "phone", "gender", "age", "course", "roll_number", "branch", "year", "image_tag")
     search_fields = ("name", "email", "roll_number")
     list_filter = ("branch", "year", "gender")
     readonly_fields = ("image_tag",)
-
+    inlines = [AttendanceInline]  # ✅ Show attendance in student page
 
 # -----------------------
 # ✅ PARENT ADMIN
@@ -41,17 +47,14 @@ class ParentAdmin(admin.ModelAdmin):
     readonly_fields = ("image_tag",)
     fields = ("name", "email", "phone", "gender", "address", "aadhaar", "relation", "student", "password", "photo", "image_tag")
 
-
 # -----------------------
 # ✅ UTILITY FUNCTIONS FOR YEARLY ADMINS
 # -----------------------
 def year_admin_list_display():
     return ("student", "get_gender", "get_age", "get_roll_number", "get_course", "get_branch", "get_year")
 
-
 def year_admin_fields():
     return ("student",)
-
 
 def year_admin_methods(cls):
     def get_roll_number(self, obj):
@@ -86,7 +89,6 @@ def year_admin_methods(cls):
     cls.get_age = get_age
     return cls
 
-
 # -----------------------
 # ✅ MECHANICAL YEARLY ADMINS
 # -----------------------
@@ -97,14 +99,12 @@ class MechanicalFirstYearStudentAdmin(admin.ModelAdmin):
     list_filter = ("student__branch", "student__year", "student__gender")
     fields = year_admin_fields()
 
-
 @admin.register(MechanicalSecondYearStudent)
 class MechanicalSecondYearStudentAdmin(admin.ModelAdmin):
     list_display = year_admin_list_display()
     search_fields = ("student__roll_number", "student__name", "student__email")
     list_filter = ("student__branch", "student__year", "student__gender")
     fields = year_admin_fields()
-
 
 @admin.register(MechanicalThirdYearStudent)
 class MechanicalThirdYearStudentAdmin(admin.ModelAdmin):
@@ -113,14 +113,12 @@ class MechanicalThirdYearStudentAdmin(admin.ModelAdmin):
     list_filter = ("student__branch", "student__year", "student__gender")
     fields = year_admin_fields()
 
-
 @admin.register(MechanicalFourthYearStudent)
 class MechanicalFourthYearStudentAdmin(admin.ModelAdmin):
     list_display = year_admin_list_display()
     search_fields = ("student__roll_number", "student__name", "student__email")
     list_filter = ("student__branch", "student__year", "student__gender")
     fields = year_admin_fields()
-
 
 # -----------------------
 # ✅ ELECTRICAL YEARLY ADMINS
@@ -132,14 +130,12 @@ class ElectricalFirstYearStudentAdmin(admin.ModelAdmin):
     list_filter = ("student__branch", "student__year", "student__gender")
     fields = year_admin_fields()
 
-
 @admin.register(ElectricalSecondYearStudent)
 class ElectricalSecondYearStudentAdmin(admin.ModelAdmin):
     list_display = year_admin_list_display()
     search_fields = ("student__roll_number", "student__name", "student__email")
     list_filter = ("student__branch", "student__year", "student__gender")
     fields = year_admin_fields()
-
 
 @admin.register(ElectricalThirdYearStudent)
 class ElectricalThirdYearStudentAdmin(admin.ModelAdmin):
@@ -148,7 +144,6 @@ class ElectricalThirdYearStudentAdmin(admin.ModelAdmin):
     list_filter = ("student__branch", "student__year", "student__gender")
     fields = year_admin_fields()
 
-
 @admin.register(ElectricalFourthYearStudent)
 class ElectricalFourthYearStudentAdmin(admin.ModelAdmin):
     list_display = year_admin_list_display()
@@ -156,9 +151,32 @@ class ElectricalFourthYearStudentAdmin(admin.ModelAdmin):
     list_filter = ("student__branch", "student__year", "student__gender")
     fields = year_admin_fields()
 
+# -----------------------
+# ✅ ATTENDANCE & SUBJECT ADMIN
+# -----------------------
+@admin.register(Subject)
+class SubjectAdmin(admin.ModelAdmin):
+    list_display = ("name", "branch", "year")
+    search_fields = ("name", "branch", "year")
+    list_filter = ("branch", "year")
+
+@admin.register(Attendance)
+class AttendanceAdmin(admin.ModelAdmin):
+    list_display = ("student", "get_roll_number", "subject", "date", "status", "get_class_type")
+    search_fields = ("student__name", "student__roll_number", "subject__name")
+    list_filter = ("subject__branch", "subject__year", "date", "status")
+    date_hierarchy = "date"
+
+    def get_roll_number(self, obj):
+        return obj.student.roll_number
+    get_roll_number.short_description = "Roll Number"
+
+    def get_class_type(self, obj):
+        return f"{obj.student.branch} {obj.student.year}"
+    get_class_type.short_description = "Class"
 
 # -----------------------
-# Apply methods to all yearly admins
+# Apply year methods to all yearly admins
 # -----------------------
 for admin_cls in [
     MechanicalFirstYearStudentAdmin, MechanicalSecondYearStudentAdmin,

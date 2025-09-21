@@ -4,20 +4,24 @@ from django.core.files.base import ContentFile
 from django.contrib import messages
 from django.db import IntegrityError
 from django.http import JsonResponse
+from datetime import date
+from django.views.decorators.csrf import csrf_exempt
+from django.contrib.auth import logout
 
 from .models import (
     Student, Teacher, Parent,
     MechanicalFirstYearStudent, MechanicalSecondYearStudent,
     MechanicalThirdYearStudent, MechanicalFourthYearStudent,
     ElectricalFirstYearStudent, ElectricalSecondYearStudent,
-    ElectricalThirdYearStudent, ElectricalFourthYearStudent
+    ElectricalThirdYearStudent, ElectricalFourthYearStudent,
+    Subject, Attendance
 )
 
-
+# ----------------------- HOME -----------------------
 def home(request):
     return render(request, "home.html")
 
-
+# ----------------------- REGISTER -----------------------
 def register(request):
     if request.method == 'POST':
         form_type = request.POST.get('form_type')
@@ -59,7 +63,7 @@ def register(request):
                         ext = format.split('/')[-1]
                         student.photo.save(f"{roll_number}.{ext}", ContentFile(base64.b64decode(imgstr)), save=False)
 
-                    student.save()  # ✅ Trigger branch-year signal
+                    student.save()  # ✅ Triggers post_save signals if you use them
 
                     # ---------------- Branch-Year info ----------------
                     course_upper = course.strip().upper()
@@ -85,6 +89,12 @@ def register(request):
                                 ElectricalThirdYearStudent.objects.get_or_create(student=student)
                             elif year_lower == "fourth year":
                                 ElectricalFourthYearStudent.objects.get_or_create(student=student)
+
+                    # ---------------- AUTO CREATE ATTENDANCE ----------------
+                    subjects = Subject.objects.filter(branch=branch, year=year)
+                    for subject in subjects:
+                        # Create initial attendance record for today with default "Absent"
+                        Attendance.objects.get_or_create(student=student, subject=subject, date=date.today(), defaults={"status": "Absent"})
 
                     messages.success(request, "✅ Student Registered Successfully!")
                     return redirect('register_success')
@@ -177,7 +187,6 @@ def register(request):
     students = Student.objects.all()
     return render(request, 'register.html', {'teachers': teachers, 'students': students})
 
-
 # ----------------------- AJAX UNIQUE CHECK -----------------------
 def check_unique(request):
     field = request.GET.get("field")
@@ -199,12 +208,10 @@ def check_unique(request):
 
     return JsonResponse({"exists": exists})
 
-
 def register_success(request):
     return render(request, "register_success.html")
 
-
-# ----------------------- LOGIN VIEWS -----------------------
+# ----------------------- LOGIN VIEW -----------------------
 def login_view(request):
     if request.method == 'POST':
         user_type = None
@@ -261,6 +268,11 @@ def login_view(request):
 
     return render(request, 'home.html')
 
+# ----------------------- LOGOUT -----------------------
+def user_logout(request):
+    request.session.flush()  # Clear all session data
+    messages.success(request, "You have been logged out successfully.")
+    return redirect("login")  # redirect to login page
 
 # ----------------------- DASHBOARDS -----------------------
 def student_dashboard(request):
@@ -268,8 +280,8 @@ def student_dashboard(request):
     if not user_id:
         return redirect('login')
     user = Student.objects.get(id=user_id)
-    return render(request, 'student_dashboard.html', {'user': user})
-
+    attendance_records = Attendance.objects.filter(student=user).order_by('-date')
+    return render(request, 'student_dashboard.html', {'user': user, 'attendance_records': attendance_records})
 
 def teacher_dashboard(request):
     user_id = request.session.get('user_id')
@@ -278,51 +290,9 @@ def teacher_dashboard(request):
     user = Teacher.objects.get(id=user_id)
     return render(request, 'teacher_dashboard.html', {'user': user})
 
-
 def parent_dashboard(request):
     user_id = request.session.get('user_id')
     if not user_id:
         return redirect('login')
     user = Parent.objects.get(id=user_id)
     return render(request, 'parent_dashboard.html', {'user': user})
-
-
-# ----------------------- ALTERNATIVE LOGIN HANDLER -----------------------
-def user_login(request):
-    if request.method == "POST":
-        student_id = request.POST.get('student_id')
-        teacher_id = request.POST.get('teacher_id')
-        parent_id = request.POST.get('parent_id')
-        password = request.POST.get('password')
-
-        if student_id:
-            try:
-                student = Student.objects.get(email=student_id)
-                if student.password == password:
-                    return redirect('student_dashboard')
-                else:
-                    messages.error(request, "Invalid Student ID or password.")
-            except Student.DoesNotExist:
-                messages.error(request, "Student not found.")
-
-        elif teacher_id:
-            try:
-                teacher = Teacher.objects.get(email=teacher_id)
-                if teacher.password == password:
-                    return redirect('teacher_dashboard')
-                else:
-                    messages.error(request, "Invalid Teacher ID or password.")
-            except Teacher.DoesNotExist:
-                messages.error(request, "Teacher not found.")
-
-        elif parent_id:
-            try:
-                parent = Parent.objects.get(email=parent_id)
-                if parent.password == password:
-                    return redirect('parent_dashboard')
-                else:
-                    messages.error(request, "Invalid Parent ID or password.")
-            except Parent.DoesNotExist:
-                messages.error(request, "Parent not found.")
-
-    return redirect('home')

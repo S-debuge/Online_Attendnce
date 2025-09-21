@@ -2,7 +2,7 @@ from django.db import models
 from django.utils.html import format_html
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-
+from datetime import date
 
 # -----------------------
 # ✅ TEACHER MODEL
@@ -28,7 +28,6 @@ class Teacher(models.Model):
             return format_html('<img src="{}" style="width:100px; border-radius:10px;" />', self.photo.url)
         return "-"
     image_tag.short_description = 'Photo'
-
 
 # -----------------------
 # ✅ STUDENT MODEL
@@ -59,7 +58,6 @@ class Student(models.Model):
         return "-"
     image_tag.short_description = 'Photo'
 
-
 # -----------------------
 # ✅ PARENT MODEL
 # -----------------------
@@ -85,9 +83,8 @@ class Parent(models.Model):
         return "-"
     image_tag.short_description = 'Photo'
 
-
 # -----------------------
-# ✅ MECHANICAL BRANCH-YEAR MODELS
+# ✅ BRANCH-YEAR STUDENTS
 # -----------------------
 class MechanicalFirstYearStudent(models.Model):
     student = models.OneToOneField(Student, on_delete=models.CASCADE)
@@ -98,7 +95,6 @@ class MechanicalFirstYearStudent(models.Model):
     def __str__(self):
         return f"{self.student.name} ({self.student.roll_number})"
 
-
 class MechanicalSecondYearStudent(models.Model):
     student = models.OneToOneField(Student, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -107,7 +103,6 @@ class MechanicalSecondYearStudent(models.Model):
         verbose_name_plural = "Mechanical Second Year Students"
     def __str__(self):
         return f"{self.student.name} ({self.student.roll_number})"
-
 
 class MechanicalThirdYearStudent(models.Model):
     student = models.OneToOneField(Student, on_delete=models.CASCADE)
@@ -118,7 +113,6 @@ class MechanicalThirdYearStudent(models.Model):
     def __str__(self):
         return f"{self.student.name} ({self.student.roll_number})"
 
-
 class MechanicalFourthYearStudent(models.Model):
     student = models.OneToOneField(Student, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -128,10 +122,6 @@ class MechanicalFourthYearStudent(models.Model):
     def __str__(self):
         return f"{self.student.name} ({self.student.roll_number})"
 
-
-# -----------------------
-# ✅ ELECTRICAL BRANCH-YEAR MODELS
-# -----------------------
 class ElectricalFirstYearStudent(models.Model):
     student = models.OneToOneField(Student, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -140,7 +130,6 @@ class ElectricalFirstYearStudent(models.Model):
         verbose_name_plural = "Electrical First Year Students"
     def __str__(self):
         return f"{self.student.name} ({self.student.roll_number})"
-
 
 class ElectricalSecondYearStudent(models.Model):
     student = models.OneToOneField(Student, on_delete=models.CASCADE)
@@ -151,7 +140,6 @@ class ElectricalSecondYearStudent(models.Model):
     def __str__(self):
         return f"{self.student.name} ({self.student.roll_number})"
 
-
 class ElectricalThirdYearStudent(models.Model):
     student = models.OneToOneField(Student, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -160,7 +148,6 @@ class ElectricalThirdYearStudent(models.Model):
         verbose_name_plural = "Electrical Third Year Students"
     def __str__(self):
         return f"{self.student.name} ({self.student.roll_number})"
-
 
 class ElectricalFourthYearStudent(models.Model):
     student = models.OneToOneField(Student, on_delete=models.CASCADE)
@@ -171,9 +158,35 @@ class ElectricalFourthYearStudent(models.Model):
     def __str__(self):
         return f"{self.student.name} ({self.student.roll_number})"
 
+# -----------------------
+# ✅ SUBJECT MODEL
+# -----------------------
+class Subject(models.Model):
+    name = models.CharField(max_length=100)
+    branch = models.CharField(max_length=50)
+    year = models.CharField(max_length=20)
+
+    def __str__(self):
+        return f"{self.name} ({self.branch} {self.year})"
 
 # -----------------------
-# ✅ AUTO CREATE BRANCH-YEAR STUDENTS
+# ✅ ATTENDANCE MODEL
+# -----------------------
+class Attendance(models.Model):
+    STATUS_CHOICES = (('Present', 'Present'), ('Absent', 'Absent'))
+    student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='attendances')
+    subject = models.ForeignKey(Subject, on_delete=models.CASCADE)
+    date = models.DateField(default=date.today)
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='Absent')
+
+    class Meta:
+        unique_together = ('student', 'subject', 'date')
+
+    def __str__(self):
+        return f"{self.student.name} - {self.subject.name} - {self.date} - {self.status}"
+
+# -----------------------
+# ✅ SIGNAL TO CREATE BRANCH-YEAR RECORDS
 # -----------------------
 @receiver(post_save, sender=Student)
 def save_branch_year_student(sender, instance, created, **kwargs):
@@ -205,3 +218,10 @@ def save_branch_year_student(sender, instance, created, **kwargs):
                 ElectricalThirdYearStudent.objects.get_or_create(student=instance)
             elif year == "fourth year":
                 ElectricalFourthYearStudent.objects.get_or_create(student=instance)
+
+    # -----------------------
+    # ✅ AUTO CREATE ATTENDANCE FOR ALL SUBJECTS OF STUDENT
+    # -----------------------
+    subjects = Subject.objects.filter(branch=instance.branch, year=instance.year)
+    for subject in subjects:
+        Attendance.objects.get_or_create(student=instance, subject=subject, date=date.today())
