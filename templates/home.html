@@ -61,7 +61,7 @@
 
         .form-content {
             position: relative;
-            height: 250px;
+            min-height: 280px; /* Increased min-height to ensure button visibility */
             overflow: hidden;
         }
 
@@ -106,6 +106,7 @@
             font-weight: bold;
             cursor: pointer;
             transition: transform 0.2s ease-in-out, background-color 0.2s ease-in-out;
+            margin-top: auto; /* Ensure button stays visible at bottom */
         }
 
         .login-button {
