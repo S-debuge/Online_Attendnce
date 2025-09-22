@@ -14,5 +14,6 @@ urlpatterns = [
     path('dashboard/parent/', views.parent_dashboard, name='parent_dashboard'),
 
     path('teacher/attendance/submit/', views.submit_attendance_ajax, name='submit_attendance_ajax'),
-    path('submit-attendance/', views.submit_attendance_ajax, name='submit_attendance_ajax'),
+    path('submit_attendance_ajax/', views.submit_attendance_ajax, name='submit_attendance_ajax'),
+    path('teacher/get_student_faces/', views.get_student_faces, name='get_student_faces'),
 ]

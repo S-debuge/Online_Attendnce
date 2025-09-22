@@ -1,10 +1,13 @@
 import base64
+import json
 from datetime import date
 from django.shortcuts import render, redirect
 from django.core.files.base import ContentFile
 from django.contrib import messages
-from django.db import IntegrityError
+from django.db import IntegrityError, transaction
 from django.http import JsonResponse
+from django.utils.dateparse import parse_date
+from django.views.decorators.csrf import csrf_exempt
 
 from .models import (
     Student, Teacher, Parent,
@@ -291,9 +294,7 @@ def teacher_dashboard(request):
     branch = teacher.department.strip().lower()
     year = teacher.year.strip().lower()
     
-    # Fetch all students with same branch and year
     students = Student.objects.filter(branch__iexact=branch, year__iexact=year)
-    
     timetable = TimeTable.objects.filter(teacher=teacher).last()
     results = Result.objects.filter(teacher=teacher)
     leaves = Leave.objects.filter(teacher=teacher)
@@ -330,22 +331,15 @@ def parent_dashboard(request):
         'notifications': notifications
     })
 
-
-from django.views.decorators.http import require_POST
-from django.utils import timezone
-from django.db import transaction
-
+# ----------------------- TEACHER ATTENDANCE -----------------------
 def teacher_attendance(request):
     if not request.session.get('logged_in') or request.session.get('user_type') != 'teacher':
         return redirect('login')
     
     teacher = Teacher.objects.get(id=request.session.get('user_id'))
+    branch = teacher.department.strip().lower()
+    year_str = teacher.year.strip().lower()
     
-    # Determine branch & year from teacher
-    branch = getattr(teacher, 'department', '').lower()
-    year_str = getattr(teacher, 'year', '').lower()
-    
-    # Fetch students automatically based on branch and year
     students = []
     if branch == "mechanical":
         if "first" in year_str or "1" in year_str: students = MechanicalFirstYearStudent.objects.all()
@@ -358,11 +352,9 @@ def teacher_attendance(request):
         elif "third" in year_str or "3" in year_str: students = ElectricalThirdYearStudent.objects.all()
         elif "fourth" in year_str or "4" in year_str: students = ElectricalFourthYearStudent.objects.all()
     
-    # Subjects handled by this teacher
     subjects = Subject.objects.filter(branch=teacher.department, year=teacher.year)
     
     if request.method == "POST":
-        # Save attendance for selected lecture
         lecture_subject_id = request.POST.get("subject")
         lecture_subject = Subject.objects.get(id=lecture_subject_id)
         attendance_date = request.POST.get("date") or str(date.today())
@@ -386,28 +378,42 @@ def teacher_attendance(request):
         'today': date.today(),
     })
 
-
-import json
-from django.views.decorators.csrf import csrf_exempt
-from django.http import JsonResponse
-from datetime import date
-
+# ----------------------- AJAX ATTENDANCE SAVE -----------------------
 @csrf_exempt
 def submit_attendance_ajax(request):
-    if request.method=="POST":
-        data=json.loads(request.body)
-        subject_id=data.get("subject")
-        attendance_date=data.get("date", str(date.today()))
-        attendance_data=data.get("attendance",{})
-        subject=Subject.objects.get(id=subject_id)
-        for student_id,status in attendance_data.items():
-            student=Student.objects.get(id=student_id)
-            Attendance.objects.update_or_create(
-                student=student,
-                subject=subject,
-                date=attendance_date,
-                defaults={'status':status}
-            )
-        return JsonResponse({"success":True})
-    return JsonResponse({"success":False})
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body)
+            date_str = data.get('date')
+            subject = data.get('subject')
+            attendance_data = data.get('attendance')
 
+            date_obj = parse_date(date_str)
+            if not date_obj or not subject or not attendance_data:
+                return JsonResponse({'success': False, 'error': 'Invalid data'})
+
+            for student_id, status in attendance_data.items():
+                student = Student.objects.get(id=student_id)
+                Attendance.objects.update_or_create(
+                    student=student,
+                    date=date_obj,
+                    subject=subject,
+                    defaults={'status': status}
+                )
+            return JsonResponse({'success': True})
+        except Exception as e:
+            return JsonResponse({'success': False, 'error': str(e)})
+
+    return JsonResponse({'success': False, 'error': 'Invalid request method'})
+
+# ----------------------- FACE DATA FOR ATTENDANCE -----------------------
+def get_student_faces(request):
+    students = Student.objects.all()
+    data = []
+    for s in students:
+        if s.face_descriptors:  # assuming you saved descriptors as JSON list in model
+            data.append({
+                "name": s.name,
+                "descriptors": json.loads(s.face_descriptors)
+            })
+    return JsonResponse(data, safe=False)

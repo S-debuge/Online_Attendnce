@@ -52,18 +52,17 @@
       {% endif %}
       <div class="text-center sm:text-left flex-1">
         <h3 class="font-bold text-lg">{{ user.name }}</h3>
-        <p class="text-gray-600 text-sm">{{ user.department }} | {{ user.year }}</p>
+        <p class="text-gray-600 text-sm">{{ user.department }} | {{ user.year }} | {{ user.subject }}</p>
         <p><b>Email:</b> {{ user.email }}</p>
         <p><b>Mobile:</b> {{ user.phone }}</p>
         <p><b>Employee ID:</b> {{ user.employee_id }}</p>
       </div>
     </div>
 
-    <!-- Attendance -->
+    <!-- Attendance Page -->
     <div id="attendance" class="page">
       <h2 class="text-xl font-bold mb-4">📅 Attendance</h2>
 
-      <!-- Subject & Date -->
       <div class="flex gap-4 mb-4">
         <label class="flex-1">
           <span>Subject:</span>
@@ -77,7 +76,7 @@
 
       <div class="flex flex-wrap gap-2 mb-4">
         <button id="startBtn" class="px-4 py-2 bg-blue-600 text-white rounded flex-1">Start Camera</button>
-        <button id="takePhotoBtn" class="px-4 py-2 bg-green-600 text-white rounded flex-1" disabled>Take Photo</button>
+        <button id="takePhotoBtn" class="px-4 py-2 bg-green-600 text-white rounded flex-1" disabled>Capture Photo & Auto Mark</button>
         <button id="stopBtn" class="px-4 py-2 bg-red-600 text-white rounded flex-1" disabled>Stop Camera</button>
       </div>
 
@@ -112,21 +111,106 @@
       </div>
 
       <div class="flex flex-wrap gap-2 mt-2">
-        <button id="submitBtn" onclick="submitAttendance()" class="px-4 py-2 bg-yellow-500 text-white rounded flex-1">Submit Attendance</button>
+        <button id="submitBtn" class="px-4 py-2 bg-yellow-500 text-white rounded flex-1">Submit Attendance</button>
         <button onclick="downloadCSV()" class="px-4 py-2 bg-yellow-600 text-white rounded flex-1">Download CSV</button>
-      </div>
-
-      <div class="mt-4">
-        <h3 class="text-lg font-semibold">✅ Marked Attendance</h3>
-        <ul id="autoAttendanceList" class="list-disc pl-6 text-gray-700"></ul>
-      </div>
-      <div class="mt-4">
-        <h3 class="text-lg font-semibold text-red-600">❌ Absent Students</h3>
-        <ul id="absentList" class="list-disc pl-6 text-gray-700"></ul>
       </div>
     </div>
 
-    <!-- Other Sections Remain Same -->
+    <!-- Time Table -->
+    <div id="timeTable" class="page hidden">
+      <h2 class="text-xl font-bold mb-4">📘 Time Table Upload</h2>
+      <div class="flex flex-col sm:flex-row items-center gap-2 mb-4">
+        <select id="ttYearSelect" class="border px-2 py-1 rounded flex-1">
+          <option value="">Select Year</option>
+          <option value="1st Year">1st Year</option>
+          <option value="2nd Year">2nd Year</option>
+          <option value="3rd Year">3rd Year</option>
+          <option value="4th Year">4th Year</option>
+        </select>
+        <input type="file" id="ttFile" class="border px-2 py-1 rounded flex-1" />
+        <button onclick="uploadTimeTable()" class="px-4 py-2 bg-blue-600 text-white rounded flex-1">Upload</button>
+      </div>
+      <ul id="uploadedTimeTables" class="list-disc pl-6 text-gray-700 mb-6"></ul>
+      <h3 class="text-lg font-semibold mb-2">🧑‍🏫 My Time Table</h3>
+      <div id="myTimeTable" class="bg-white p-4 rounded shadow text-center">
+        <p class="text-gray-500">No time table uploaded yet.</p>
+      </div>
+    </div>
+
+    <!-- Result -->
+    <div id="result" class="page hidden">
+      <h2 class="text-xl font-bold mb-4">📊 Result Upload</h2>
+      <div class="flex flex-col sm:flex-row items-center gap-2 mb-4">
+        <select id="resYearSelect" class="border px-2 py-1 rounded flex-1">
+          <option value="">Select Year</option>
+          <option value="1st Year">1st Year</option>
+          <option value="2nd Year">2nd Year</option>
+          <option value="3rd Year">3rd Year</option>
+          <option value="4th Year">4th Year</option>
+        </select>
+        <input type="file" id="resFile" class="border px-2 py-1 rounded flex-1" />
+        <button onclick="uploadResult()" class="px-4 py-2 bg-green-600 text-white rounded flex-1">Upload</button>
+      </div>
+      <ul id="uploadedResults" class="list-disc pl-6 text-gray-700"></ul>
+    </div>
+
+    <!-- Emergency -->
+    <div id="emergency" class="page hidden">
+      <h2 class="text-2xl font-bold mb-4 text-red-600">🚨 Emergency</h2>
+      <div class="bg-white p-4 rounded shadow mb-4">
+        <input type="text" id="emergencyTitle" placeholder="Enter emergency title" class="border px-3 py-2 rounded w-full mb-2" />
+        <textarea id="emergencyMessage" placeholder="Write emergency message..." class="border px-3 py-2 rounded w-full mb-2"></textarea>
+        <button onclick="sendEmergency()" class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 w-full sm:w-auto">Send Alert</button>
+      </div>
+      <ul id="emergencyList" class="list-disc pl-6 text-gray-700">
+        <li class="text-gray-500">No emergency alerts yet.</li>
+      </ul>
+    </div>
+
+    <!-- Smart Leave -->
+    <div id="smartLeave" class="page hidden">
+      <h2 class="text-2xl font-bold mb-4 text-indigo-600">📝 Smart Leave</h2>
+      <div class="bg-white shadow-lg rounded-lg p-6 w-full max-w-md">
+        <form id="leaveForm" class="space-y-4">
+          <div>
+            <label class="block text-gray-700 font-medium mb-1">Teacher Name</label>
+            <input type="text" id="teacherName" required class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none" value="{{ user.name }}" readonly />
+          </div>
+          <div>
+            <label class="block text-gray-700 font-medium mb-1">Leave Type</label>
+            <select id="leaveType" required class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none">
+              <option value="">Select Type</option>
+              <option value="Sick Leave">Sick Leave</option>
+              <option value="Casual Leave">Casual Leave</option>
+              <option value="Emergency Leave">Emergency Leave</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-gray-700 font-medium mb-1">From Date</label>
+            <input type="date" id="fromDate" required class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none" />
+          </div>
+          <div>
+            <label class="block text-gray-700 font-medium mb-1">To Date</label>
+            <input type="date" id="toDate" required class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none" />
+          </div>
+          <div>
+            <label class="block text-gray-700 font-medium mb-1">Reason</label>
+            <textarea id="reason" rows="3" required class="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-500 outline-none"></textarea>
+          </div>
+          <button type="submit" class="w-full bg-indigo-600 text-white py-2 rounded-lg hover:bg-indigo-700 transition">Submit Leave Request</button>
+        </form>
+        <div id="submittedLeaves" class="mt-6">
+          <h3 class="text-lg font-semibold text-gray-700 mb-2">Submitted Leaves</h3>
+          <ul id="leaveList" class="list-disc list-inside text-gray-600 space-y-1"></ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- Notifications -->
+    <div id="notifications" class="page hidden">
+      <h2 class="text-xl font-bold mb-4">🔔 Notifications</h2>
+      <p class="text-gray-600">Notifications will appear here...</p>
+    </div>
 
   </main>
 </div>
@@ -141,12 +225,22 @@ function toggleSidebar(){if(window.innerWidth<768) sidebar.classList.add("-trans
 function showPage(pageId){document.querySelectorAll(".page").forEach(p=>p.classList.add("hidden"));document.getElementById(pageId).classList.remove("hidden");}
 window.onload=()=>showPage("attendance");
 
-// Attendance buttons
+// Smart Leave Form
+const leaveForm=document.getElementById("leaveForm");
+leaveForm.addEventListener("submit",function(e){
+  e.preventDefault();
+  const name=document.getElementById("teacherName").value,type=document.getElementById("leaveType").value,
+        from=document.getElementById("fromDate").value,to=document.getElementById("toDate").value,
+        reason=document.getElementById("reason").value;
+  const li=document.createElement("li"); li.textContent=`${name} | ${type} | ${from} to ${to} | ${reason}`;
+  document.getElementById("leaveList").appendChild(li);
+  leaveForm.reset();
+});
+
+// Attendance manual
 const table=document.getElementById("attendanceTable");
 let presentCount=0;
-function updateCounter(){
-  document.getElementById("presentCounterTop").innerText=`Total Present: ${presentCount}/${table.rows.length}`;
-}
+function updateCounter(){document.getElementById("presentCounterTop").innerText=`Total Present: ${presentCount}/${table.rows.length}`;}
 table.addEventListener("click",e=>{
   if(e.target.classList.contains("present-btn")){
     const row=e.target.closest("tr");
@@ -155,8 +249,6 @@ table.addEventListener("click",e=>{
     row.querySelector(".status").innerText="Present";
     row.querySelector(".status").classList.remove("text-gray-600","text-red-600");
     row.querySelector(".status").classList.add("text-green-600");
-    presentCount=Array.from(table.rows).filter(r=>r.querySelector(".present-btn").classList.contains("active")).length;
-    updateCounter();
   }
   if(e.target.classList.contains("absent-btn")){
     const row=e.target.closest("tr");
@@ -165,14 +257,13 @@ table.addEventListener("click",e=>{
     row.querySelector(".status").innerText="Absent";
     row.querySelector(".status").classList.remove("text-gray-600","text-green-600");
     row.querySelector(".status").classList.add("text-red-600");
-    presentCount=Array.from(table.rows).filter(r=>r.querySelector(".present-btn").classList.contains("active")).length;
-    updateCounter();
   }
+  presentCount=Array.from(table.rows).filter(r=>r.querySelector(".present-btn").classList.contains("active")).length;
+  updateCounter();
 });
-updateCounter();
 
-// Submit Attendance to server
-function submitAttendance(){
+// Submit Attendance
+document.getElementById("submitBtn").addEventListener("click",()=>{
   const date=document.getElementById("attendanceDate").value;
   const subject=document.getElementById("subjectSelect").value;
   const rows=Array.from(table.rows);
@@ -189,14 +280,90 @@ function submitAttendance(){
     body:JSON.stringify(data)
   })
   .then(res=>res.json())
-  .then(res=>{
-    if(res.success){
-      alert("✅ Attendance Submitted Successfully!");
-    }else{
-      alert("❌ Error submitting attendance.");
-    }
+  .then(res=>{if(res.success){alert("✅ Attendance Submitted Successfully!");}else{alert("❌ Error submitting attendance.");}})
+  .catch(err=>{console.error(err);alert("❌ Error submitting attendance. Check console.");});
+});
+
+// Download CSV
+function downloadCSV(){
+  let csv="Name,Status\n";
+  Array.from(table.rows).forEach(r=>{
+    csv+=`${r.cells[0].innerText},${r.querySelector(".status").innerText}\n`;
   });
+  const blob=new Blob([csv],{type:"text/csv"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a");
+  a.href=url; a.download=`attendance_${new Date().toISOString().slice(0,10)}.csv`; a.click();
+  URL.revokeObjectURL(url);
 }
+
+// Camera & Face Recognition
+const startBtn=document.getElementById('startBtn');
+const stopBtn=document.getElementById('stopBtn');
+const takePhotoBtn=document.getElementById('takePhotoBtn');
+const video=document.getElementById('attCamera');
+const canvas=document.getElementById('attCanvas');
+let stream;
+
+Promise.all([
+  faceapi.nets.tinyFaceDetector.loadFromUri('/static/models'),
+  faceapi.nets.faceRecognitionNet.loadFromUri('/static/models'),
+  faceapi.nets.faceLandmark68Net.loadFromUri('/static/models')
+]).then(()=>console.log("FaceAPI Models Loaded"));
+
+startBtn.addEventListener('click', async () => {
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ video: true });
+    video.srcObject = stream;
+    takePhotoBtn.disabled = false;
+    stopBtn.disabled = false;
+  } catch(err) { alert("❌ Cannot access camera: " + err.message); }
+});
+
+stopBtn.addEventListener('click', () => {
+  if(stream){ stream.getTracks().forEach(track => track.stop()); video.srcObject=null; takePhotoBtn.disabled=true; stopBtn.disabled=true; }
+});
+
+takePhotoBtn.addEventListener('click', async () => {
+  if(!stream){ alert("❌ Camera not started!"); return; }
+  canvas.width=video.videoWidth; canvas.height=video.videoHeight;
+  const ctx=canvas.getContext('2d'); ctx.drawImage(video,0,0,canvas.width,canvas.height);
+  const detections=await faceapi.detectAllFaces(video,new faceapi.TinyFaceDetectorOptions()).withFaceLandmarks().withFaceDescriptors();
+  
+  fetch("{% url 'get_student_faces' %}")
+  .then(res=>res.json())
+  .then(data=>{
+    const labeledDescriptors=data.map(student=>new faceapi.LabeledFaceDescriptors(student.name, student.descriptors.map(d=>new Float32Array(d))));
+    const faceMatcher=new faceapi.FaceMatcher(labeledDescriptors,0.6);
+
+    // Mark all absent first
+    Array.from(table.rows).forEach(r=>{
+      r.querySelector(".present-btn").classList.remove("active");
+      r.querySelector(".absent-btn").classList.add("active");
+      r.querySelector(".status").innerText="Absent";
+      r.querySelector(".status").classList.remove("text-gray-600","text-green-600");
+      r.querySelector(".status").classList.add("text-red-600");
+    });
+
+    detections.forEach(fd=>{
+      const bestMatch=faceMatcher.findBestMatch(fd.descriptor);
+      if(bestMatch.label!=="unknown"){
+        const row=Array.from(table.rows).find(r=>r.cells[0].innerText===bestMatch.label);
+        if(row){
+          row.querySelector(".absent-btn").classList.remove("active");
+          row.querySelector(".present-btn").classList.add("active");
+          row.querySelector(".status").innerText="Present";
+          row.querySelector(".status").classList.remove("text-gray-600","text-red-600");
+          row.querySelector(".status").classList.add("text-green-600");
+        }
+      }
+    });
+
+    presentCount=Array.from(table.rows).filter(r=>r.querySelector(".present-btn").classList.contains("active")).length;
+    updateCounter();
+    alert("✅ Auto Attendance Updated! You can manually change if needed.");
+  }).catch(err=>{ console.error(err); alert("❌ Error fetching student face data."); });
+});
 </script>
 
 </body>

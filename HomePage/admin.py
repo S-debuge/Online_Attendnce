@@ -255,27 +255,19 @@ add_teacher_methods(ElectricalFourthYearTeacherAdmin)
 # -----------------------
 # ✅ ATTENDANCE & SUBJECT ADMIN
 # -----------------------
+@admin.register(Attendance)
+class AttendanceAdmin(admin.ModelAdmin):
+    list_display = ('student', 'branch', 'student_class', 'subject', 'date', 'lecture', 'status')
+    list_filter = ('branch', 'student_class', 'subject', 'date')
+    search_fields = ('student__name', 'subject')
+    ordering = ('-date', 'lecture')
+
+
 @admin.register(Subject)
 class SubjectAdmin(admin.ModelAdmin):
     list_display = ("name", "branch", "year")
     search_fields = ("name", "branch", "year")
     list_filter = ("branch", "year")
-
-
-@admin.register(Attendance)
-class AttendanceAdmin(admin.ModelAdmin):
-    list_display = ('student', 'branch', 'student_class', 'subject', 'date', 'status')
-    list_filter = ('date', 'subject', 'student__branch', 'student__year', 'status')
-    search_fields = ('student__name', 'subject__name', 'student__roll_number')
-    date_hierarchy = 'date'
-    
-    def get_roll_number(self, obj):
-        return obj.student.roll_number
-    get_roll_number.short_description = "Roll Number"
-
-    def get_class_type(self, obj):
-        return f"{obj.student.branch} {obj.student.year}"
-    get_class_type.short_description = "Class"
 
 
 # -----------------------

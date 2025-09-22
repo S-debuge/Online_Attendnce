@@ -52,7 +52,7 @@ class Student(models.Model):
     course = models.CharField(max_length=50)
     roll_number = models.CharField(max_length=20, unique=True)
     branch = models.CharField(max_length=50)
-    year = models.CharField(max_length=10)
+    year = models.CharField(max_length=20)  # Year string (first year, etc.)
     parent_fullname = models.CharField(max_length=100)
     guardian_teacher = models.CharField(max_length=100, blank=True, null=True)
     password = models.CharField(max_length=100)
@@ -210,30 +210,26 @@ class Subject(models.Model):
 
 
 # -----------------------
-# ATTENDANCE MODEL
+# ATTENDANCE MODEL (Lecture-wise)
 # -----------------------
 class Attendance(models.Model):
-    STATUS_CHOICES = (('Present', 'Present'), ('Absent', 'Absent'))
-    student = models.ForeignKey(Student, on_delete=models.CASCADE, related_name='attendances')
-    subject = models.ForeignKey(Subject, on_delete=models.CASCADE)
-    date = models.DateField(default=date.today)
-    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='Absent')
+    student = models.ForeignKey(Student, on_delete=models.CASCADE)
+    date = models.DateField()
+    subject = models.CharField(max_length=100)
+    lecture = models.PositiveIntegerField(default=1)  # Lecture number
+    branch = models.CharField(max_length=50, blank=True, null=True)
+    student_class = models.CharField(max_length=50, blank=True, null=True)
+    status_choices = (
+        ('Present', 'Present'),
+        ('Absent', 'Absent'),
+    )
+    status = models.CharField(max_length=10, choices=status_choices)
 
     class Meta:
-        unique_together = ('student', 'subject', 'date')
-        ordering = ['-date']  # Show latest first
+        unique_together = ('student', 'date', 'subject', 'lecture')
 
     def __str__(self):
-        return f"{self.student.name} - {self.subject.name} - {self.date} - {self.status}"
-
-    @property
-    def branch(self):
-        return self.student.branch
-
-    @property
-    def student_class(self):
-        return self.student.year
-
+        return f"{self.student.name} - {self.date} - {self.subject} - Lecture {self.lecture}"
 
 
 # -----------------------
@@ -297,7 +293,66 @@ class Notification(models.Model):
 
 
 # -----------------------
-# SIGNALS FOR STUDENTS
+# TEACHER-YEAR MODELS
+# -----------------------
+class MechanicalFirstYearTeacher(models.Model):
+    teacher = models.OneToOneField(Teacher, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+    def __str__(self):
+        return f"{self.teacher.name} ({self.teacher.department} - {self.teacher.year})"
+
+
+class MechanicalSecondYearTeacher(models.Model):
+    teacher = models.OneToOneField(Teacher, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+    def __str__(self):
+        return f"{self.teacher.name} ({self.teacher.department} - {self.teacher.year})"
+
+
+class MechanicalThirdYearTeacher(models.Model):
+    teacher = models.OneToOneField(Teacher, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+    def __str__(self):
+        return f"{self.teacher.name} ({self.teacher.department} - {self.teacher.year})"
+
+
+class MechanicalFourthYearTeacher(models.Model):
+    teacher = models.OneToOneField(Teacher, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+    def __str__(self):
+        return f"{self.teacher.name} ({self.teacher.department} - {self.teacher.year})"
+
+
+class ElectricalFirstYearTeacher(models.Model):
+    teacher = models.OneToOneField(Teacher, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+    def __str__(self):
+        return f"{self.teacher.name} ({self.teacher.department} - {self.teacher.year})"
+
+
+class ElectricalSecondYearTeacher(models.Model):
+    teacher = models.OneToOneField(Teacher, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+    def __str__(self):
+        return f"{self.teacher.name} ({self.teacher.department} - {self.teacher.year})"
+
+
+class ElectricalThirdYearTeacher(models.Model):
+    teacher = models.OneToOneField(Teacher, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+    def __str__(self):
+        return f"{self.teacher.name} ({self.teacher.department} - {self.teacher.year})"
+
+
+class ElectricalFourthYearTeacher(models.Model):
+    teacher = models.OneToOneField(Teacher, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True)
+    def __str__(self):
+        return f"{self.teacher.name} ({self.teacher.department} - {self.teacher.year})"
+
+
+# -----------------------
+# SIGNALS FOR STUDENTS (AUTO-YEAR AND ATTENDANCE)
 # -----------------------
 @receiver(post_save, sender=Student)
 def save_branch_year_student(sender, instance, created, **kwargs):
@@ -308,6 +363,7 @@ def save_branch_year_student(sender, instance, created, **kwargs):
     branch = instance.branch.strip().lower()
     year = instance.year.strip().lower()
 
+    # Auto-create year-based model
     if course == "BE":
         if branch == "mechanical":
             if year == "first year":
@@ -328,65 +384,20 @@ def save_branch_year_student(sender, instance, created, **kwargs):
             elif year == "fourth year":
                 ElectricalFourthYearStudent.objects.get_or_create(student=instance)
 
+    # Auto-create today's attendance for Lecture 1 of each subject
     subjects = Subject.objects.filter(branch=instance.branch, year=instance.year)
     for subject in subjects:
-        Attendance.objects.get_or_create(student=instance, subject=subject, date=date.today())
+        Attendance.objects.get_or_create(
+            student=instance,
+            subject=subject.name,
+            date=date.today(),
+            lecture=1,
+            defaults={"branch": instance.branch, "student_class": instance.year, "status": "Absent"}
+        )
 
 
 # -----------------------
-# TEACHER-YEAR MODELS
-# -----------------------
-class MechanicalFirstYearTeacher(models.Model):
-    teacher = models.OneToOneField(Teacher, on_delete=models.CASCADE)
-    created_at = models.DateTimeField(auto_now_add=True)
-    def __str__(self):
-        return f"{self.teacher.name} ({self.teacher.department} - {self.teacher.year})"
-
-class MechanicalSecondYearTeacher(models.Model):
-    teacher = models.OneToOneField(Teacher, on_delete=models.CASCADE)
-    created_at = models.DateTimeField(auto_now_add=True)
-    def __str__(self):
-        return f"{self.teacher.name} ({self.teacher.department} - {self.teacher.year})"
-
-class MechanicalThirdYearTeacher(models.Model):
-    teacher = models.OneToOneField(Teacher, on_delete=models.CASCADE)
-    created_at = models.DateTimeField(auto_now_add=True)
-    def __str__(self):
-        return f"{self.teacher.name} ({self.teacher.department} - {self.teacher.year})"
-
-class MechanicalFourthYearTeacher(models.Model):
-    teacher = models.OneToOneField(Teacher, on_delete=models.CASCADE)
-    created_at = models.DateTimeField(auto_now_add=True)
-    def __str__(self):
-        return f"{self.teacher.name} ({self.teacher.department} - {self.teacher.year})"
-
-class ElectricalFirstYearTeacher(models.Model):
-    teacher = models.OneToOneField(Teacher, on_delete=models.CASCADE)
-    created_at = models.DateTimeField(auto_now_add=True)
-    def __str__(self):
-        return f"{self.teacher.name} ({self.teacher.department} - {self.teacher.year})"
-
-class ElectricalSecondYearTeacher(models.Model):
-    teacher = models.OneToOneField(Teacher, on_delete=models.CASCADE)
-    created_at = models.DateTimeField(auto_now_add=True)
-    def __str__(self):
-        return f"{self.teacher.name} ({self.teacher.department} - {self.teacher.year})"
-
-class ElectricalThirdYearTeacher(models.Model):
-    teacher = models.OneToOneField(Teacher, on_delete=models.CASCADE)
-    created_at = models.DateTimeField(auto_now_add=True)
-    def __str__(self):
-        return f"{self.teacher.name} ({self.teacher.department} - {self.teacher.year})"
-
-class ElectricalFourthYearTeacher(models.Model):
-    teacher = models.OneToOneField(Teacher, on_delete=models.CASCADE)
-    created_at = models.DateTimeField(auto_now_add=True)
-    def __str__(self):
-        return f"{self.teacher.name} ({self.teacher.department} - {self.teacher.year})"
-
-
-# -----------------------
-# SIGNALS FOR TEACHERS
+# SIGNALS FOR TEACHERS (AUTO-YEAR ASSIGNMENT)
 # -----------------------
 @receiver(post_save, sender=Teacher)
 def save_teacher_year(sender, instance, created, **kwargs):
