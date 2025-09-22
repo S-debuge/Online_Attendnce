@@ -12,4 +12,7 @@ urlpatterns = [
     path('dashboard/student/', views.student_dashboard, name='student_dashboard'),
     path('dashboard/teacher/', views.teacher_dashboard, name='teacher_dashboard'),
     path('dashboard/parent/', views.parent_dashboard, name='parent_dashboard'),
+
+    path('teacher/attendance/submit/', views.submit_attendance_ajax, name='submit_attendance_ajax'),
+    path('submit-attendance/', views.submit_attendance_ajax, name='submit_attendance_ajax'),
 ]

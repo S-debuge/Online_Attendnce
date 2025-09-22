@@ -264,11 +264,11 @@ class SubjectAdmin(admin.ModelAdmin):
 
 @admin.register(Attendance)
 class AttendanceAdmin(admin.ModelAdmin):
-    list_display = ("student", "get_roll_number", "subject", "date", "status", "get_class_type")
-    search_fields = ("student__name", "student__roll_number", "subject__name")
-    list_filter = ("subject__branch", "subject__year", "date", "status")
-    date_hierarchy = "date"
-
+    list_display = ('student', 'branch', 'student_class', 'subject', 'date', 'status')
+    list_filter = ('date', 'subject', 'student__branch', 'student__year', 'status')
+    search_fields = ('student__name', 'subject__name', 'student__roll_number')
+    date_hierarchy = 'date'
+    
     def get_roll_number(self, obj):
         return obj.student.roll_number
     get_roll_number.short_description = "Roll Number"

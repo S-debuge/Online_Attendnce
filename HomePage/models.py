@@ -5,7 +5,7 @@ from django.dispatch import receiver
 from datetime import date
 
 # -----------------------
-# ✅ DEPARTMENT MODEL
+# DEPARTMENT MODEL
 # -----------------------
 class Department(models.Model):
     name = models.CharField(max_length=100, unique=True)
@@ -15,14 +15,14 @@ class Department(models.Model):
 
 
 # -----------------------
-# ✅ TEACHER MODEL
+# TEACHER MODEL
 # -----------------------
 class Teacher(models.Model):
     name = models.CharField(max_length=100, unique=True)
     email = models.EmailField(unique=True)
     phone = models.CharField(max_length=20)
     address = models.TextField()
-    department = models.CharField(max_length=50)  # Could be a ForeignKey to Department if you want dynamic dropdowns
+    department = models.CharField(max_length=50)
     subject = models.CharField(max_length=50)
     year = models.CharField(max_length=20, default="1")  # 1st year, 2nd year, etc.
     employee_id = models.CharField(max_length=20, unique=True)
@@ -42,7 +42,7 @@ class Teacher(models.Model):
 
 
 # -----------------------
-# ✅ STUDENT MODEL
+# STUDENT MODEL
 # -----------------------
 class Student(models.Model):
     name = models.CharField(max_length=100, unique=True)
@@ -73,7 +73,7 @@ class Student(models.Model):
 
 
 # -----------------------
-# ✅ PARENT MODEL
+# PARENT MODEL
 # -----------------------
 class Parent(models.Model):
     name = models.CharField(max_length=100)
@@ -99,83 +99,106 @@ class Parent(models.Model):
 
 
 # -----------------------
-# ✅ BRANCH-YEAR STUDENTS
+# BRANCH-YEAR STUDENTS
 # -----------------------
 class MechanicalFirstYearStudent(models.Model):
     student = models.OneToOneField(Student, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
+
     class Meta:
         verbose_name = "Mechanical First Year Student"
         verbose_name_plural = "Mechanical First Year Students"
+
     def __str__(self):
         return f"{self.student.name} ({self.student.roll_number})"
+
 
 class MechanicalSecondYearStudent(models.Model):
     student = models.OneToOneField(Student, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
+
     class Meta:
         verbose_name = "Mechanical Second Year Student"
         verbose_name_plural = "Mechanical Second Year Students"
+
     def __str__(self):
         return f"{self.student.name} ({self.student.roll_number})"
+
 
 class MechanicalThirdYearStudent(models.Model):
     student = models.OneToOneField(Student, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
+
     class Meta:
         verbose_name = "Mechanical Third Year Student"
         verbose_name_plural = "Mechanical Third Year Students"
+
     def __str__(self):
         return f"{self.student.name} ({self.student.roll_number})"
+
 
 class MechanicalFourthYearStudent(models.Model):
     student = models.OneToOneField(Student, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
+
     class Meta:
         verbose_name = "Mechanical Fourth Year Student"
         verbose_name_plural = "Mechanical Fourth Year Students"
+
     def __str__(self):
         return f"{self.student.name} ({self.student.roll_number})"
+
 
 class ElectricalFirstYearStudent(models.Model):
     student = models.OneToOneField(Student, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
+
     class Meta:
         verbose_name = "Electrical First Year Student"
         verbose_name_plural = "Electrical First Year Students"
+
     def __str__(self):
         return f"{self.student.name} ({self.student.roll_number})"
+
 
 class ElectricalSecondYearStudent(models.Model):
     student = models.OneToOneField(Student, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
+
     class Meta:
         verbose_name = "Electrical Second Year Student"
         verbose_name_plural = "Electrical Second Year Students"
+
     def __str__(self):
         return f"{self.student.name} ({self.student.roll_number})"
+
 
 class ElectricalThirdYearStudent(models.Model):
     student = models.OneToOneField(Student, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
+
     class Meta:
         verbose_name = "Electrical Third Year Student"
         verbose_name_plural = "Electrical Third Year Students"
+
     def __str__(self):
         return f"{self.student.name} ({self.student.roll_number})"
+
 
 class ElectricalFourthYearStudent(models.Model):
     student = models.OneToOneField(Student, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
+
     class Meta:
         verbose_name = "Electrical Fourth Year Student"
         verbose_name_plural = "Electrical Fourth Year Students"
+
     def __str__(self):
         return f"{self.student.name} ({self.student.roll_number})"
 
 
 # -----------------------
-# ✅ SUBJECT MODEL
+# SUBJECT MODEL
 # -----------------------
 class Subject(models.Model):
     name = models.CharField(max_length=100)
@@ -187,7 +210,7 @@ class Subject(models.Model):
 
 
 # -----------------------
-# ✅ ATTENDANCE MODEL
+# ATTENDANCE MODEL
 # -----------------------
 class Attendance(models.Model):
     STATUS_CHOICES = (('Present', 'Present'), ('Absent', 'Absent'))
@@ -198,13 +221,83 @@ class Attendance(models.Model):
 
     class Meta:
         unique_together = ('student', 'subject', 'date')
+        ordering = ['-date']  # Show latest first
 
     def __str__(self):
         return f"{self.student.name} - {self.subject.name} - {self.date} - {self.status}"
 
+    @property
+    def branch(self):
+        return self.student.branch
+
+    @property
+    def student_class(self):
+        return self.student.year
+
+
 
 # -----------------------
-# ✅ SIGNAL TO CREATE BRANCH-YEAR RECORDS & ATTENDANCE
+# TIME TABLE MODEL
+# -----------------------
+class TimeTable(models.Model):
+    teacher = models.ForeignKey(Teacher, on_delete=models.CASCADE)
+    file = models.FileField(upload_to='timetables/')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.teacher.name} TimeTable"
+
+
+# -----------------------
+# RESULT MODEL
+# -----------------------
+class Result(models.Model):
+    student = models.ForeignKey(Student, on_delete=models.CASCADE)
+    subject = models.ForeignKey(Subject, on_delete=models.CASCADE)
+    marks_obtained = models.FloatField()
+    total_marks = models.FloatField()
+    teacher = models.ForeignKey(Teacher, on_delete=models.CASCADE)
+    date = models.DateField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.student.name} - {self.subject.name} ({self.marks_obtained}/{self.total_marks})"
+
+
+# -----------------------
+# LEAVE MODEL
+# -----------------------
+class Leave(models.Model):
+    teacher = models.ForeignKey(Teacher, on_delete=models.CASCADE)
+    student = models.ForeignKey(Student, on_delete=models.CASCADE, null=True, blank=True)
+    reason = models.TextField()
+    start_date = models.DateField()
+    end_date = models.DateField()
+    status_choices = (('Pending', 'Pending'), ('Approved', 'Approved'), ('Rejected', 'Rejected'))
+    status = models.CharField(max_length=10, choices=status_choices, default='Pending')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Leave: {self.teacher.name} - {self.status}"
+
+
+# -----------------------
+# NOTIFICATION MODEL
+# -----------------------
+class Notification(models.Model):
+    teacher = models.ForeignKey(Teacher, on_delete=models.CASCADE, null=True, blank=True)
+    student = models.ForeignKey(Student, on_delete=models.CASCADE, null=True, blank=True)
+    parent = models.ForeignKey(Parent, on_delete=models.CASCADE, null=True, blank=True)
+    title = models.CharField(max_length=100)
+    message = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    read = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f"Notification: {self.title}"
+
+
+# -----------------------
+# SIGNALS FOR STUDENTS
 # -----------------------
 @receiver(post_save, sender=Student)
 def save_branch_year_student(sender, instance, created, **kwargs):
@@ -241,7 +334,7 @@ def save_branch_year_student(sender, instance, created, **kwargs):
 
 
 # -----------------------
-# ✅ TEACHER-YEAR MODELS
+# TEACHER-YEAR MODELS
 # -----------------------
 class MechanicalFirstYearTeacher(models.Model):
     teacher = models.OneToOneField(Teacher, on_delete=models.CASCADE)
@@ -293,7 +386,7 @@ class ElectricalFourthYearTeacher(models.Model):
 
 
 # -----------------------
-# ✅ SIGNAL TO AUTO CREATE TEACHER-YEAR RECORD
+# SIGNALS FOR TEACHERS
 # -----------------------
 @receiver(post_save, sender=Teacher)
 def save_teacher_year(sender, instance, created, **kwargs):

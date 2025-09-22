@@ -16,17 +16,15 @@ from .models import (
     MechanicalThirdYearTeacher, MechanicalFourthYearTeacher,
     ElectricalFirstYearTeacher, ElectricalSecondYearTeacher,
     ElectricalThirdYearTeacher, ElectricalFourthYearTeacher,
-    Subject, Attendance
+    Subject, Attendance, TimeTable, Result, Leave, Notification
 )
 
-# ----------------------- HELPER -----------------------
+# ----------------------- HELPERS -----------------------
 def calculate_age(dob):
-    """Calculate age from date of birth."""
     today = date.today()
     return today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
 
 def save_photo(instance, photo_data, filename_prefix):
-    """Save base64 photo to model instance."""
     if photo_data and photo_data.startswith("data:image"):
         format, imgstr = photo_data.split(';base64,')
         ext = format.split('/')[-1]
@@ -41,7 +39,7 @@ def register(request):
     if request.method == 'POST':
         form_type = request.POST.get('form_type')
         try:
-            # ------------------ STUDENT FORM ------------------
+            # ------------------ STUDENT ------------------
             if form_type == "student":
                 name = request.POST.get('name')
                 email = request.POST.get('email')
@@ -71,18 +69,17 @@ def register(request):
                     name=name, email=email, phone=phone, address=address,
                     roll_number=roll_number, course=course, branch=branch,
                     year=year, parent_fullname=parent_fullname,
-                    guardian_teacher=guardian_teacher, password=password,
-                    gender=gender, age=age, dob=dob
+                    guardian_teacher=guardian_teacher.name if guardian_teacher else "",
+                    password=password, gender=gender, age=age, dob=dob
                 )
                 save_photo(student, photo_data, roll_number)
 
                 try:
                     student.save()
 
-                    # ---------------- Branch-Year info ----------------
+                    # ---------------- Branch-Year ----------------
                     branch_lower = branch.strip().lower()
                     year_lower = year.strip().lower()
-                    # Mechanical Students
                     if branch_lower == "mechanical":
                         if "first" in year_lower:
                             MechanicalFirstYearStudent.objects.get_or_create(student=student)
@@ -92,7 +89,6 @@ def register(request):
                             MechanicalThirdYearStudent.objects.get_or_create(student=student)
                         elif "fourth" in year_lower:
                             MechanicalFourthYearStudent.objects.get_or_create(student=student)
-                    # Electrical Students
                     elif branch_lower == "electrical":
                         if "first" in year_lower:
                             ElectricalFirstYearStudent.objects.get_or_create(student=student)
@@ -103,7 +99,7 @@ def register(request):
                         elif "fourth" in year_lower:
                             ElectricalFourthYearStudent.objects.get_or_create(student=student)
 
-                    # ---------------- AUTO CREATE ATTENDANCE ----------------
+                    # ---------------- Attendance ----------------
                     subjects = Subject.objects.filter(branch=branch, year=year)
                     for subject in subjects:
                         Attendance.objects.get_or_create(
@@ -120,7 +116,7 @@ def register(request):
                     messages.error(request, "❌ Duplicate Entry: Email, Name, or Roll Number already exists.")
                     return redirect('register')
 
-            # ------------------ TEACHER FORM ------------------
+            # ------------------ TEACHER ------------------
             elif form_type == "teacher":
                 name = request.POST.get('name')
                 email = request.POST.get('email')
@@ -176,7 +172,7 @@ def register(request):
                     messages.error(request, "❌ Duplicate Entry: Email, Name, or Employee ID already exists.")
                     return redirect('register')
 
-            # ------------------ PARENT FORM ------------------
+            # ------------------ PARENT ------------------
             elif form_type == "parent":
                 name = request.POST.get('name')
                 email = request.POST.get('email')
@@ -244,23 +240,17 @@ def register_success(request):
 # ----------------------- LOGIN -----------------------
 def login_view(request):
     if request.method == 'POST':
-        user_type = None
-        user = None
         identifier = request.POST.get('student_id') or request.POST.get('teacher_id') or request.POST.get('parent_id')
         password = request.POST.get('password')
+        user_type = None
+        user = None
 
         if 'student_id' in request.POST:
             user_type = 'student'
-            try:
-                user = Student.objects.get(email=identifier)
-            except Student.DoesNotExist:
-                user = Student.objects.filter(roll_number=identifier).first()
+            user = Student.objects.filter(email=identifier).first() or Student.objects.filter(roll_number=identifier).first()
         elif 'teacher_id' in request.POST:
             user_type = 'teacher'
-            try:
-                user = Teacher.objects.get(email=identifier)
-            except Teacher.DoesNotExist:
-                user = Teacher.objects.filter(employee_id=identifier).first()
+            user = Teacher.objects.filter(email=identifier).first() or Teacher.objects.filter(employee_id=identifier).first()
         elif 'parent_id' in request.POST:
             user_type = 'parent'
             user = Parent.objects.filter(email=identifier).first()
@@ -269,12 +259,7 @@ def login_view(request):
             request.session['user_type'] = user_type
             request.session['user_id'] = user.id
             request.session['logged_in'] = True
-            if user_type == 'student':
-                return redirect('student_dashboard')
-            elif user_type == 'teacher':
-                return redirect('teacher_dashboard')
-            else:
-                return redirect('parent_dashboard')
+            return redirect(f'{user_type}_dashboard')
         else:
             messages.error(request, 'Invalid credentials.')
 
@@ -290,56 +275,139 @@ def user_logout(request):
 def student_dashboard(request):
     if not request.session.get('logged_in') or request.session.get('user_type') != 'student':
         return redirect('login')
-    user_id = request.session.get('user_id')
-    user = Student.objects.get(id=user_id)
-    attendance_records = Attendance.objects.filter(student=user).order_by('-date')
+    student = Student.objects.get(id=request.session.get('user_id'))
+    attendance_records = Attendance.objects.filter(student=student).order_by('-date')
     return render(request, 'student_dashboard.html', {
-        'user': user,
+        'user': student,
         'attendance_records': attendance_records,
-        'photo_url': user.photo.url if user.photo else None
+        'photo_url': student.photo.url if student.photo else None
     })
 
 def teacher_dashboard(request):
     if not request.session.get('logged_in') or request.session.get('user_type') != 'teacher':
         return redirect('login')
-    user_id = request.session.get('user_id')
-    user = Teacher.objects.get(id=user_id)
+    
+    teacher = Teacher.objects.get(id=request.session.get('user_id'))
+    branch = teacher.department.strip().lower()
+    year = teacher.year.strip().lower()
+    
+    # Fetch all students with same branch and year
+    students = Student.objects.filter(branch__iexact=branch, year__iexact=year)
+    
+    timetable = TimeTable.objects.filter(teacher=teacher).last()
+    results = Result.objects.filter(teacher=teacher)
+    leaves = Leave.objects.filter(teacher=teacher)
+    notifications = Notification.objects.filter(teacher=teacher)
+    
     return render(request, 'teacher_dashboard.html', {
-        'user': user,
-        'photo_url': user.photo.url if user.photo else None
+        'user': teacher,
+        'students': students,
+        'timetable': timetable,
+        'results': results,
+        'leaves': leaves,
+        'notifications': notifications,
+        'photo_url': teacher.photo.url if teacher.photo else None
     })
 
 def parent_dashboard(request):
     if not request.session.get('logged_in') or request.session.get('user_type') != 'parent':
         return redirect('login')
-    user_id = request.session.get('user_id')
-    user = Parent.objects.get(id=user_id)
-    student = user.student
+    parent = Parent.objects.get(id=request.session.get('user_id'))
+    student = parent.student
 
-    # ------------------ DUMMY DATA FOR DASHBOARD ------------------
-    attendance_chart_data = []
     subjects = Subject.objects.filter(branch=student.branch, year=student.year)
-    for i in range(6):
-        month = f"Month {i+1}"
-        present = 18
-        total = 20
-        attendance_chart_data.append({"month": month, "present": present, "total": total})
-
+    attendance_chart_data = [{"month": f"Month {i+1}", "present": 18, "total": 20} for i in range(6)]
     semesters_data = [
-        {
-            "name": f"Semester {i+1}",
-            "subjects": [{"name": sub.name, "marks": 75, "total": 100} for sub in subjects]
-        } for i in range(2)
+        {"name": f"Semester {i+1}", "subjects": [{"name": sub.name, "marks": 75, "total": 100} for sub in subjects]} for i in range(2)
     ]
-
-    notifications = [
-        {"title": "Notice", "message": "School will be closed tomorrow", "time": "2025-09-21T10:00:00"}
-    ]
+    notifications = Notification.objects.filter(student=student) | Notification.objects.filter(parent=parent)
 
     return render(request, 'parent_dashboard.html', {
-        'parent': user,
+        'parent': parent,
         'student': student,
         'attendance_chart_data': attendance_chart_data,
         'semesters_data': semesters_data,
         'notifications': notifications
     })
+
+
+from django.views.decorators.http import require_POST
+from django.utils import timezone
+from django.db import transaction
+
+def teacher_attendance(request):
+    if not request.session.get('logged_in') or request.session.get('user_type') != 'teacher':
+        return redirect('login')
+    
+    teacher = Teacher.objects.get(id=request.session.get('user_id'))
+    
+    # Determine branch & year from teacher
+    branch = getattr(teacher, 'department', '').lower()
+    year_str = getattr(teacher, 'year', '').lower()
+    
+    # Fetch students automatically based on branch and year
+    students = []
+    if branch == "mechanical":
+        if "first" in year_str or "1" in year_str: students = MechanicalFirstYearStudent.objects.all()
+        elif "second" in year_str or "2" in year_str: students = MechanicalSecondYearStudent.objects.all()
+        elif "third" in year_str or "3" in year_str: students = MechanicalThirdYearStudent.objects.all()
+        elif "fourth" in year_str or "4" in year_str: students = MechanicalFourthYearStudent.objects.all()
+    elif branch == "electrical":
+        if "first" in year_str or "1" in year_str: students = ElectricalFirstYearStudent.objects.all()
+        elif "second" in year_str or "2" in year_str: students = ElectricalSecondYearStudent.objects.all()
+        elif "third" in year_str or "3" in year_str: students = ElectricalThirdYearStudent.objects.all()
+        elif "fourth" in year_str or "4" in year_str: students = ElectricalFourthYearStudent.objects.all()
+    
+    # Subjects handled by this teacher
+    subjects = Subject.objects.filter(branch=teacher.department, year=teacher.year)
+    
+    if request.method == "POST":
+        # Save attendance for selected lecture
+        lecture_subject_id = request.POST.get("subject")
+        lecture_subject = Subject.objects.get(id=lecture_subject_id)
+        attendance_date = request.POST.get("date") or str(date.today())
+        
+        with transaction.atomic():
+            for student in students:
+                status = request.POST.get(f"attendance_{student.student.id}", "Absent")
+                Attendance.objects.update_or_create(
+                    student=student.student,
+                    subject=lecture_subject,
+                    date=attendance_date,
+                    defaults={'status': status}
+                )
+        messages.success(request, "✅ Attendance Saved Successfully!")
+        return redirect('teacher_attendance')
+
+    return render(request, 'teacher_attendance.html', {
+        'teacher': teacher,
+        'students': students,
+        'subjects': subjects,
+        'today': date.today(),
+    })
+
+
+import json
+from django.views.decorators.csrf import csrf_exempt
+from django.http import JsonResponse
+from datetime import date
+
+@csrf_exempt
+def submit_attendance_ajax(request):
+    if request.method=="POST":
+        data=json.loads(request.body)
+        subject_id=data.get("subject")
+        attendance_date=data.get("date", str(date.today()))
+        attendance_data=data.get("attendance",{})
+        subject=Subject.objects.get(id=subject_id)
+        for student_id,status in attendance_data.items():
+            student=Student.objects.get(id=student_id)
+            Attendance.objects.update_or_create(
+                student=student,
+                subject=subject,
+                date=attendance_date,
+                defaults={'status':status}
+            )
+        return JsonResponse({"success":True})
+    return JsonResponse({"success":False})
+
