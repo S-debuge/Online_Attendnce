@@ -7,234 +7,278 @@
   <title>Student Dashboard</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    /* Smooth transitions and glowing cards */
+    * {
+      transition: all 0.3s ease;
+    }
+
+    body {
+      background: linear-gradient(to right, #eef2ff, #e0e7ff);
+      font-family: 'Inter', sans-serif;
+    }
+
+    .card {
+      background: white;
+      border-radius: 1rem;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+    }
+
+    .sidebar-gradient {
+      background: linear-gradient(180deg, #1e3a8a, #4338ca);
+    }
+
+    .active-btn {
+      background-color: #2563eb !important;
+      color: white !important;
+      font-weight: 600;
+    }
+
+    .sidebar-btn:hover {
+      background-color: rgba(255, 255, 255, 0.15);
+      transform: translateX(5px);
+    }
+
+    /* important for student dashboard layout */
+    main.flex-1.p-6.md\:ml-64.overflow-y-auto {
+    margin-left: 20%;
+}
+
+aside#sidebar {
+    position: fixed;
+}
+
+@media (max-width: 768px) {
+    main.flex-1.p-6.md\:ml-64.overflow-y-auto {
+        margin-left: 0;
+    }
+  }
+
+  </style>
 </head>
 
-<body class="bg-gray-100">
+<body class="min-h-screen flex bg-gray-50">
 
-  <div class="flex flex-col md:flex-row min-h-screen">
-
-    <!-- Sidebar -->
-    <aside id="sidebar"
-      class="fixed md:relative z-20 w-64 bg-white shadow-md h-screen overflow-y-auto transform -translate-x-full md:translate-x-0 transition-transform duration-300">
-      <div class="p-4 flex items-center justify-between border-b">
-        <h1 class="text-xl font-bold text-blue-600">Studance Attendance</h1>
+  <!-- Sidebar -->
+  <aside id="sidebar"
+    class="sidebar-gradient fixed md:relative z-20 w-64 text-white h-screen flex flex-col justify-between transform -translate-x-full md:translate-x-0 transition-transform duration-300 shadow-lg">
+    <div>
+      <div class="p-4 flex items-center justify-between border-b border-blue-400/30">
+        <h1 class="text-2xl font-bold tracking-wide">🎓 Studance</h1>
         <button class="md:hidden" onclick="toggleSidebar()">✖</button>
       </div>
-      <nav class="p-4 space-y-3">
+
+      <nav class="p-4 space-y-3 mt-2">
         <button onclick="showPage('attendance')"
-          class="w-full text-left block text-gray-700 hover:text-blue-600">📅 Attendance</button>
+          class="sidebar-btn w-full text-left px-3 py-2 rounded-lg hover:bg-blue-700/60">📅 Attendance</button>
         <button onclick="showPage('timetable')"
-          class="w-full text-left block text-gray-700 hover:text-blue-600">📖 Time Table</button>
+          class="sidebar-btn w-full text-left px-3 py-2 rounded-lg hover:bg-blue-700/60">📖 Time Table</button>
         <button onclick="showPage('subjects')"
-          class="w-full text-left block text-gray-700 hover:text-blue-600">📝 Result</button>
+          class="sidebar-btn w-full text-left px-3 py-2 rounded-lg hover:bg-blue-700/60">📝 Result</button>
         <button onclick="showPage('emergency')"
-          class="w-full text-left block text-red-600 font-semibold">🆘 Emergency Alert</button>
+          class="sidebar-btn w-full text-left px-3 py-2 rounded-lg text-red-200 hover:bg-red-600/70">🆘 Emergency
+          Alert</button>
         <button onclick="showPage('leave')"
-          class="w-full text-left block text-gray-700 hover:text-blue-600">📌 Smart Leave</button>
+          class="sidebar-btn w-full text-left px-3 py-2 rounded-lg hover:bg-blue-700/60">📌 Smart Leave</button>
         <button onclick="showPage('notification')"
-          class="w-full text-left block text-yellow-600 hover:text-yellow-700 font-semibold">🔔 Notifications</button>
-        <form method="post" action="{% url 'logout' %}">
-          {% csrf_token %}
-          <button type="submit" class="w-full text-left block text-gray-700 hover:text-red-600 font-semibold mt-4">🚪 Logout</button>
-        </form>
+          class="sidebar-btn w-full text-left px-3 py-2 rounded-lg hover:bg-yellow-500/50 text-yellow-100">🔔
+          Notifications</button>
       </nav>
-    </aside>
+    </div>
 
-    <!-- Mobile Hamburger -->
-    <button
-      class="fixed top-4 left-4 z-30 md:hidden bg-blue-600 text-white px-3 py-2 rounded shadow"
-      onclick="toggleSidebar()">☰</button>
+    <form method="post" action="{% url 'logout' %}" class="p-4 border-t border-blue-400/30">
+      {% csrf_token %}
+      <button type="submit"
+        class="w-full bg-red-500 hover:bg-red-600 py-2 rounded-lg font-semibold text-white">🚪 Logout</button>
+    </form>
+  </aside>
 
-    <!-- Main Content -->
-    <main class="flex-1 p-4 md:ml-64 max-w-full">
+  <!-- Mobile Hamburger -->
+  <button
+    class="fixed top-4 left-4 z-30 md:hidden bg-indigo-600 text-white px-3 py-2 rounded shadow-lg hover:bg-indigo-700"
+    onclick="toggleSidebar()">☰</button>
 
-      <!-- Student Info -->
-      <div
-        class="bg-white p-4 rounded-xl shadow-md flex flex-col md:flex-row items-center gap-4 mb-6 w-full max-w-5xl mx-auto">
-        {% if user.photo %}
-          <img src="{{ user.photo.url }}" class="w-20 h-20 rounded-full border" alt="Profile">
-        {% else %}
-          <img src="https://i.pravatar.cc/100" class="w-20 h-20 rounded-full border" alt="Profile">
-        {% endif %}
-        <div class="text-center md:text-left">
-          <h2 class="text-xl font-bold">{{ user.name }}</h2>
-          <p class="text-sm text-gray-500">📍 {{ user.address }}</p>
-          <div class="mt-1 text-sm text-gray-700">
-            <p><b>Email ID:</b> {{ user.email }}</p>
-            <p><b>Mobile No:</b> {{ user.phone }}</p>
-            <p><b>Gender:</b> {{ user.gender }}</p>
-            <p><b>DOB:</b> {{ user.age }}</p>
-            <p><b>ID No:</b> {% if user.roll_number %}{{ user.roll_number }}{% else %}{{ user.id }}{% endif %}</p>
-          </div>
+  <!-- Main Content -->
+  <main class="flex-1 p-6 md:ml-64 overflow-y-auto">
+
+    <!-- Student Info Card -->
+    <div
+      class="card flex flex-col md:flex-row items-center gap-5 mb-8 p-6 border border-indigo-100 hover:shadow-xl max-w-5xl mx-auto">
+      {% if user.photo %}
+      <img src="{{ user.photo.url }}" class="w-24 h-24 rounded-full border-4 border-indigo-500" alt="Profile">
+      {% else %}
+      <img src="https://i.pravatar.cc/100" class="w-24 h-24 rounded-full border-4 border-indigo-500" alt="Profile">
+      {% endif %}
+      <div class="text-center md:text-left">
+        <h2 class="text-2xl font-bold text-indigo-700">{{ user.name }}</h2>
+        <p class="text-sm text-gray-500 mb-2">📍 {{ user.address }}</p>
+        <div class="text-sm text-gray-700 space-y-1">
+          <p><b>Email:</b> {{ user.email }}</p>
+          <p><b>Mobile:</b> {{ user.phone }}</p>
+          <p><b>Gender:</b> {{ user.gender }}</p>
+          <p><b>DOB:</b> {{ user.age }}</p>
+          <p><b>ID:</b> {% if user.roll_number %}{{ user.roll_number }}{% else %}{{ user.id }}{% endif %}</p>
         </div>
       </div>
+    </div>
 
-      <!-- Attendance Page -->
-      <section id="attendance"
-        class="page hidden bg-white p-4 rounded-xl shadow-md max-w-5xl mx-auto overflow-x-auto">
-        <h1 class="text-2xl font-bold mb-4">📅 Attendance</h1>
-        <div class="flex flex-col sm:flex-row sm:items-center gap-3 mb-4">
-          <input type="date" id="attendanceDate"
-            class="border p-2 rounded flex-1 min-w-[150px]" onchange="filterAttendanceByDate(this.value)">
-          <button class="bg-blue-600 text-white px-3 py-2 rounded hover:bg-blue-700 whitespace-nowrap"
-            onclick="filterAttendanceWeek()">Week %</button>
-          <button class="bg-blue-600 text-white px-3 py-2 rounded hover:bg-blue-700 whitespace-nowrap"
-            onclick="filterAttendanceMonth()">Month %</button>
-          <button onclick="downloadAttendance()"
-            class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 whitespace-nowrap">⬇️ Download</button>
-        </div>
-        <canvas id="attendanceChart" class="mb-4"></canvas>
-        <div id="attendanceTableContainer" class="overflow-x-auto">
-          <h2 class="text-lg font-semibold mb-3" id="attendanceTitle">Daily Attendance</h2>
-          <table class="min-w-[600px] w-full border text-center">
-            <thead class="bg-gray-200">
-              <tr>
-                <th class="p-2">Date</th>
-                <th class="p-2">Subject</th>
-                <th class="p-2">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for record in attendance_records %}
-              <tr>
-                <td class="p-2">{{ record.date }}</td>
-                <td class="p-2">{{ record.subject.name }}</td>
-                <td class="p-2">
-                  {% if record.status == "Present" %}
-                    <span class="text-green-600 font-semibold">{{ record.status }}</span>
-                  {% else %}
-                    <span class="text-red-600 font-semibold">{{ record.status }}</span>
-                  {% endif %}
-                </td>
-              </tr>
-              {% empty %}
-              <tr><td colspan="3" class="p-2">No attendance records found.</td></tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      <!-- Timetable Page -->
-      <div id="timetable"
-        class="page hidden bg-white p-4 rounded-xl shadow-md max-w-5xl mx-auto overflow-x-auto">
-        <h3 class="text-lg font-semibold mb-2">📖 Time Table</h3>
-        <div class="flex flex-wrap gap-3 mb-4">
-          {% for y in "1234" %}
-          <button onclick="showTimetable({{ y }}, this)"
-            class="year-btn bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">{{ y }} Year</button>
-          {% endfor %}
-          <button onclick="downloadTimetable()"
-            class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">⬇️ Download</button>
-        </div>
-        <div class="overflow-x-auto">
-          {% if timetable_image_url %}
-            <img id="timetableImage" src="{{ timetable_image_url }}" alt="Class Timetable"
-              class="w-full h-auto rounded shadow-md cursor-pointer transition-opacity duration-500 opacity-100">
-          {% else %}
-            <p>No timetable available.</p>
-          {% endif %}
-        </div>
+    <!-- ATTENDANCE -->
+    <section id="attendance" class="page hidden card p-6 max-w-5xl mx-auto">
+      <h1 class="text-2xl font-bold text-indigo-700 mb-4 flex items-center gap-2">📅 Attendance</h1>
+      <div class="flex flex-wrap gap-3 mb-5">
+        <input type="date" id="attendanceDate" class="border p-2 rounded flex-1 min-w-[150px]"
+          onchange="filterAttendanceByDate(this.value)">
+        <button class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700"
+          onclick="filterAttendanceWeek()">Week %</button>
+        <button class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700"
+          onclick="filterAttendanceMonth()">Month %</button>
+        <button onclick="downloadAttendance()"
+          class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700">⬇️ Download</button>
       </div>
-
-      <!-- Subjects & Marks Page -->
-      <div id="subjects"
-        class="page hidden bg-white p-4 rounded-xl shadow-md max-w-5xl mx-auto overflow-x-auto">
-        <h3 class="text-lg font-semibold mb-2">📝 Result</h3>
-        <div id="marksYearButtons" class="flex flex-wrap gap-3 mb-4">
-          {% for year in "1234" %}
-          <button onclick="selectYear({{ year }}, this)"
-            class="marks-year-btn bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">{{ year }} Year</button>
-          {% endfor %}
-          <button onclick="downloadResult()"
-            class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">⬇️ Download</button>
-        </div>
-        <div id="marksSemesterButtons" class="flex flex-wrap gap-3 mb-4 hidden"></div>
-        <table id="marksTable" class="min-w-[600px] table-auto w-full text-sm text-center border min-w-max">
-          <thead class="bg-gray-100">
+      <canvas id="attendanceChart" class="mb-4"></canvas>
+      <div id="attendanceTableContainer" class="overflow-x-auto">
+        <h2 class="text-lg font-semibold mb-3 text-indigo-600" id="attendanceTitle">Daily Attendance</h2>
+        <table class="min-w-[600px] w-full border text-center">
+          <thead class="bg-indigo-100 text-indigo-800">
             <tr>
-              <th class="border p-2">Subject</th>
-              <th class="border p-2">Max Marks</th>
-              <th class="border p-2">Obtained</th>
-              <th class="border p-2">Grade</th>
+              <th class="p-2">Date</th>
+              <th class="p-2">Subject</th>
+              <th class="p-2">Status</th>
             </tr>
           </thead>
           <tbody>
-            {% for mark in marks %}
+            {% for record in attendance_records %}
             <tr>
-              <td class="border p-2">{{ mark.subject.name }}</td>
-              <td class="border p-2">{{ mark.max_marks }}</td>
-              <td class="border p-2">{{ mark.obtained_marks }}</td>
-              <td class="border p-2">{{ mark.grade }}</td>
+              <td class="p-2">{{ record.date }}</td>
+              <td class="p-2">{{ record.subject.name }}</td>
+              <td class="p-2">
+                {% if record.status == "Present" %}
+                <span class="text-green-600 font-semibold">{{ record.status }}</span>
+                {% else %}
+                <span class="text-red-600 font-semibold">{{ record.status }}</span>
+                {% endif %}
+              </td>
             </tr>
             {% empty %}
-            <tr><td colspan="4" class="p-2">No marks available.</td></tr>
+            <tr><td colspan="3" class="p-2">No attendance records found.</td></tr>
             {% endfor %}
           </tbody>
         </table>
       </div>
+    </section>
 
-      <!-- Emergency Alert -->
-      <div id="emergency"
-        class="page hidden bg-white p-4 rounded-xl shadow-md max-w-5xl mx-auto overflow-x-auto">
-        <h3 class="text-lg font-semibold mb-2 text-red-600">🆘 Emergency Alert</h3>
-        <textarea class="w-full border rounded-lg p-2 mb-3" rows="3"
-          placeholder="Type your emergency message..."></textarea>
-        <button class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700">Send Alert 🚨</button>
+    <!-- TIME TABLE -->
+    <div id="timetable" class="page hidden card p-6 max-w-5xl mx-auto">
+      <h3 class="text-xl font-semibold text-indigo-700 mb-3">📖 Time Table</h3>
+      <div class="flex flex-wrap gap-3 mb-4">
+        {% for y in "1234" %}
+        <button onclick="showTimetable('{{ y }}', this)"
+          class="year-btn bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700">{{ y }} Year</button>
+        {% endfor %}
+        <button onclick="downloadTimetable()"
+          class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">⬇️ Download</button>
       </div>
-
-      <!-- Smart Leave -->
-      <div id="leave"
-        class="page hidden bg-white p-4 rounded-xl shadow-md max-w-5xl mx-auto overflow-x-auto">
-        <h3 class="text-lg font-semibold mb-2">📌 Smart Leave Management</h3>
-        <form id="leaveForm" class="space-y-3 mb-6">
-          <input type="text" id="studentName" placeholder="Student Name"
-            class="w-full border p-2 rounded-lg" value="{{ user.name }}" required>
-          <input type="date" id="leaveDate" class="w-full border p-2 rounded-lg" required>
-          <textarea id="leaveReason" placeholder="Reason for Leave"
-            class="w-full border p-2 rounded-lg" rows="3" required></textarea>
-          <button type="submit"
-            class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700">Submit Leave Request</button>
-        </form>
-        <table class="min-w-[600px] table-auto w-full text-sm text-center border min-w-max">
-          <thead class="bg-gray-100">
-            <tr>
-              <th class="border p-2">Name</th>
-              <th class="border p-2">Date</th>
-              <th class="border p-2">Reason</th>
-              <th class="border p-2">Status</th>
-            </tr>
-          </thead>
-          <tbody id="leaveTable">
-            {% for leave in leaves %}
-            <tr>
-              <td class="border p-2">{{ leave.student.name }}</td>
-              <td class="border p-2">{{ leave.date }}</td>
-              <td class="border p-2">{{ leave.reason }}</td>
-              <td class="border p-2">{{ leave.status }}</td>
-            </tr>
-            {% empty %}
-            <tr><td colspan="4" class="p-2">No leave requests found.</td></tr>
-            {% endfor %}
-          </tbody>
-        </table>
+      <div class="overflow-x-auto text-center">
+        {% if timetable_image_url %}
+        <img id="timetableImage" src="{{ timetable_image_url }}" alt="Class Timetable"
+          class="w-full h-auto rounded shadow-md mx-auto hover:scale-[1.02]">
+        {% else %}
+        <p>No timetable available.</p>
+        {% endif %}
       </div>
+    </div>
 
-      <!-- Notifications -->
-      <div id="notification"
-        class="page hidden bg-white p-4 rounded-xl shadow-md max-w-5xl mx-auto overflow-x-auto">
-        <h3 class="text-lg font-semibold mb-2 text-yellow-600">🔔 Notifications</h3>
-        <div id="notificationsList" class="space-y-3">
-          {% for notification in notifications %}
-          <div class="p-3 bg-yellow-100 rounded shadow">{{ notification.message }}</div>
+    <!-- RESULTS -->
+    <div id="subjects" class="page hidden card p-6 max-w-5xl mx-auto">
+      <h3 class="text-xl font-semibold text-indigo-700 mb-3">📝 Result</h3>
+      <div class="flex flex-wrap gap-3 mb-4">
+        {% for year in "1234" %}
+        <button onclick="selectYear('{{ year }}', this)"
+          class="marks-year-btn bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700">{{ year }} Year</button>
+        {% endfor %}
+        <button onclick="downloadResult()"
+          class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">⬇️ Download</button>
+      </div>
+      <table class="min-w-[600px] w-full text-sm text-center border">
+        <thead class="bg-indigo-100 text-indigo-800">
+          <tr>
+            <th class="border p-2">Subject</th>
+            <th class="border p-2">Max Marks</th>
+            <th class="border p-2">Obtained</th>
+            <th class="border p-2">Grade</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for mark in marks %}
+          <tr>
+            <td class="border p-2">{{ mark.subject.name }}</td>
+            <td class="border p-2">{{ mark.max_marks }}</td>
+            <td class="border p-2">{{ mark.obtained_marks }}</td>
+            <td class="border p-2">{{ mark.grade }}</td>
+          </tr>
           {% empty %}
-          <div class="p-3 bg-yellow-100 rounded shadow">No notifications available.</div>
+          <tr><td colspan="4" class="p-2">No marks available.</td></tr>
           {% endfor %}
-        </div>
-      </div>
+        </tbody>
+      </table>
+    </div>
 
-    </main>
-  </div>
+    <!-- EMERGENCY -->
+    <div id="emergency" class="page hidden card p-6 max-w-5xl mx-auto">
+      <h3 class="text-xl font-semibold text-red-600 mb-3">🆘 Emergency Alert</h3>
+      <textarea class="w-full border rounded-lg p-3 mb-3" rows="3"
+        placeholder="Type your emergency message..."></textarea>
+      <button class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700">Send Alert 🚨</button>
+    </div>
+
+    <!-- LEAVE -->
+    <div id="leave" class="page hidden card p-6 max-w-5xl mx-auto">
+      <h3 class="text-xl font-semibold text-indigo-700 mb-3">📌 Smart Leave Management</h3>
+      <form id="leaveForm" class="space-y-3 mb-6">
+        <input type="text" id="studentName" placeholder="Student Name"
+          class="w-full border p-2 rounded-lg" value="{{ user.name }}" required>
+        <input type="date" id="leaveDate" class="w-full border p-2 rounded-lg" required>
+        <textarea id="leaveReason" placeholder="Reason for Leave"
+          class="w-full border p-2 rounded-lg" rows="3" required></textarea>
+        <button type="submit"
+          class="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700">Submit Leave Request</button>
+      </form>
+      <table class="min-w-[600px] w-full text-sm text-center border">
+        <thead class="bg-indigo-100 text-indigo-800">
+          <tr>
+            <th class="border p-2">Name</th>
+            <th class="border p-2">Date</th>
+            <th class="border p-2">Reason</th>
+            <th class="border p-2">Status</th>
+          </tr>
+        </thead>
+        <tbody id="leaveTable">
+          {% for leave in leaves %}
+          <tr>
+            <td class="border p-2">{{ leave.student.name }}</td>
+            <td class="border p-2">{{ leave.date }}</td>
+            <td class="border p-2">{{ leave.reason }}</td>
+            <td class="border p-2">{{ leave.status }}</td>
+          </tr>
+          {% empty %}
+          <tr><td colspan="4" class="p-2">No leave requests found.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- NOTIFICATIONS -->
+    <div id="notification" class="page hidden card p-6 max-w-5xl mx-auto">
+      <h3 class="text-xl font-semibold text-yellow-600 mb-3">🔔 Notifications</h3>
+      <div id="notificationsList" class="space-y-3">
+        {% for notification in notifications %}
+        <div class="p-3 bg-yellow-100 rounded shadow">{{ notification.message }}</div>
+        {% empty %}
+        <div class="p-3 bg-yellow-100 rounded shadow">No notifications available.</div>
+        {% endfor %}
+      </div>
+    </div>
+  </main>
 
   <script>
     function toggleSidebar() {
@@ -243,13 +287,11 @@
     function showPage(id) {
       document.querySelectorAll(".page").forEach(p => p.classList.add("hidden"));
       document.getElementById(id).classList.remove("hidden");
+      document.querySelectorAll(".sidebar-btn").forEach(b => b.classList.remove("active-btn"));
+      event.target.classList.add("active-btn");
     }
-
-    document.addEventListener('DOMContentLoaded', () => {
-      showPage('attendance');
-    });
+    document.addEventListener('DOMContentLoaded', () => showPage('attendance'));
   </script>
 
 </body>
-
 </html>

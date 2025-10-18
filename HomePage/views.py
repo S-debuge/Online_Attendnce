@@ -388,32 +388,99 @@ def submit_attendance_ajax(request):
             subject = data.get('subject')
             attendance_data = data.get('attendance')
 
+            # Validate incoming data
             date_obj = parse_date(date_str)
             if not date_obj or not subject or not attendance_data:
                 return JsonResponse({'success': False, 'error': 'Invalid data'})
 
-            for student_id, status in attendance_data.items():
-                student = Student.objects.get(id=student_id)
-                Attendance.objects.update_or_create(
-                    student=student,
-                    date=date_obj,
-                    subject=subject,
-                    defaults={'status': status}
-                )
+            # Save attendance records
+            for item in attendance_data:
+                student_id = item.get('student_id')
+                status = item.get('status')
+                if not student_id or not status:
+                    continue
+                try:
+                    student = Student.objects.get(id=student_id)
+                    Attendance.objects.update_or_create(
+                        student=student,
+                        date=date_obj,
+                        subject=subject,
+                        defaults={'status': status}
+                    )
+                except Student.DoesNotExist:
+                    continue
+
             return JsonResponse({'success': True})
         except Exception as e:
             return JsonResponse({'success': False, 'error': str(e)})
 
     return JsonResponse({'success': False, 'error': 'Invalid request method'})
 
+
 # ----------------------- FACE DATA FOR ATTENDANCE -----------------------
 def get_student_faces(request):
+    """
+    Returns all students with face descriptors for FaceAPI matching.
+    """
     students = Student.objects.all()
     data = []
     for s in students:
-        if s.face_descriptors:  # assuming you saved descriptors as JSON list in model
-            data.append({
-                "name": s.name,
-                "descriptors": json.loads(s.face_descriptors)
-            })
+        if s.face_descriptors:  # JSON string stored in model
+            try:
+                descriptors = json.loads(s.face_descriptors)
+                # Convert each descriptor to float list (ensure numeric type)
+                descriptors = [list(map(float, d)) for d in descriptors]
+                data.append({
+                    "name": s.name,
+                    "descriptors": descriptors
+                })
+            except Exception:
+                continue
     return JsonResponse(data, safe=False)
+
+import os
+import face_recognition
+from django.http import JsonResponse
+from django.conf import settings
+from django.views.decorators.csrf import csrf_exempt
+import base64
+from io import BytesIO
+from PIL import Image
+import numpy as np
+
+@csrf_exempt
+def auto_mark_attendance(request):
+    if request.method != "POST":
+        return JsonResponse({"error": "Invalid method"}, status=400)
+    
+    data = request.POST.get("image")
+    if not data:
+        return JsonResponse({"error": "No image provided"}, status=400)
+    
+    # Decode base64 image
+    header, base64_data = data.split(",", 1)
+    img_bytes = base64.b64decode(base64_data)
+    img = Image.open(BytesIO(img_bytes)).convert('RGB')
+    frame = np.array(img)
+
+    # Load all student photos
+    student_dir = os.path.join(settings.BASE_DIR, 'media', 'students')
+    results = []
+
+    for filename in os.listdir(student_dir):
+        if filename.lower().endswith(('.jpg','.jpeg','.png')):
+            student_name = os.path.splitext(filename)[0].replace('_', ' ')
+            student_path = os.path.join(student_dir, filename)
+            student_image = face_recognition.load_image_file(student_path)
+            student_encodings = face_recognition.face_encodings(student_image)
+            if student_encodings:
+                student_encoding = student_encodings[0]
+                # Compare with captured frame
+                frame_encodings = face_recognition.face_encodings(frame)
+                if not frame_encodings:
+                    continue
+                match_results = face_recognition.compare_faces([student_encoding], frame_encodings[0], tolerance=0.5)
+                if match_results[0]:
+                    results.append(student_name)
+
+    return JsonResponse({"present": results})
